@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 import { AnkCli, AnkError, Capabilities, INSTALL_HINT, locate } from './ank';
 import type { Located } from './ank';
+import { registerCommands } from './commands';
 import { CorpusRegistry } from './corpus/registry';
 import { Log } from './log';
 import {
@@ -24,14 +25,14 @@ interface Binary {
   capabilities: Capabilities;
 }
 
-/** The commands this build registers. The panel is told, rather than assuming. */
-const OFFERED = new Set([
-  'ank.showLog',
-  'ank.refresh',
-  'ank.open',
-  'ank.openFile',
-  'ank.status',
-]);
+/**
+ * The commands this build registered.
+ *
+ * The panel holds this set by reference and reads it when it renders, so a
+ * command that registers after the panel was built is still offered. A button
+ * for a command nothing implements is a button that fails when it is clicked.
+ */
+const offered = new Set<string>();
 
 let log: Log | undefined;
 
@@ -56,7 +57,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const registry = new CorpusRegistry(binary.cli, log);
   const documents = new EntityDocumentProvider(registry);
-  const panel = new EntityPanel(context.extensionUri, OFFERED);
+  const panel = new EntityPanel(context.extensionUri, offered);
   context.subscriptions.push(registry, documents, panel);
 
   context.subscriptions.push(
@@ -88,6 +89,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   );
 
+  for (const id of ['ank.showLog', 'ank.refresh', 'ank.open', 'ank.openFile', 'ank.status']) {
+    offered.add(id);
+  }
+
   context.subscriptions.push(
     vscode.commands.registerCommand('ank.refresh', async () => {
       await Promise.all(registry.corpora.map((corpus) => corpus.refresh()));
@@ -101,6 +106,30 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     ),
     vscode.commands.registerCommand('ank.status', () => showStatus(registry)),
   );
+
+  const fromTable = registerCommands(context, {
+    registry,
+    capabilities: binary.capabilities,
+    documents,
+    log,
+    cli: binary.cli,
+    reveal: async (corpus, id) => {
+      await openEntity(
+        { corpus, id, kind: 'task', title: id },
+        documents,
+        panel,
+        true,
+      );
+    },
+    onFindings: () => {
+      // Findings land in the Problems panel once the diagnostics layer is
+      // wired. Until then the check command shows them itself.
+    },
+  });
+
+  for (const id of fromTable) {
+    offered.add(id);
+  }
 
   await registry.start();
   await announce(registry);

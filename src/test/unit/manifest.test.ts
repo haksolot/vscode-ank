@@ -11,6 +11,7 @@ interface Manifest {
   activationEvents: string[];
   contributes?: {
     commands?: { command: string; title: string }[];
+    menus?: Record<string, { command: string }[]>;
     configuration?: {
       properties?: Record<string, { description?: string; markdownDescription?: string }>;
     };
@@ -49,14 +50,51 @@ test('the extension activates on a workspace carrying a corpus', () => {
   );
 });
 
+/**
+ * The command ids the source names, whether written out or built.
+ *
+ * Some are registered in a loop over a kind, as `ank.new.${kind}`. A search for
+ * the literal would miss those and would push the code towards writing three
+ * near-identical registrations to satisfy a test, which is the test dictating
+ * the shape of the code rather than checking it.
+ */
+const built: RegExp[] = [];
+for (const match of sources.matchAll(/`(ank\.[^`]*\$\{[^`]*)`/g)) {
+  const pattern = (match[1] ?? '')
+    .replace(/[.*+?^$()|[\]\\]/g, '\\$&')
+    // The escape pass turned `${` into `\${`, so the placeholder is matched
+    // after escaping rather than before it.
+    .replace(/\\\$\{[^}]*\}/g, '[A-Za-z0-9_.]+');
+  built.push(new RegExp(`^${pattern}$`));
+}
+
+function named(command: string): boolean {
+  return (
+    sources.includes(`'${command}'`) ||
+    sources.includes(`"${command}"`) ||
+    built.some((pattern) => pattern.test(command))
+  );
+}
+
 test('every contributed command has an implementation', () => {
   // The manifest is a promise to the command palette. A contributed id with no
   // `registerCommand` behind it is an entry that fails when it is clicked.
   for (const { command } of manifest.contributes?.commands ?? []) {
-    assert.ok(
-      sources.includes(`'${command}'`) || sources.includes(`"${command}"`),
-      `${command} is contributed but never registered`,
-    );
+    assert.ok(named(command), `${command} is contributed but never registered`);
+  }
+});
+
+test('every command a menu places is contributed', () => {
+  // A menu entry naming a command the manifest does not declare is silently
+  // dropped, so the item simply never appears and nothing says why.
+  const contributed = new Set(
+    (manifest.contributes?.commands ?? []).map((entry) => entry.command),
+  );
+
+  for (const [where, entries] of Object.entries(manifest.contributes?.menus ?? {})) {
+    for (const { command } of entries) {
+      assert.ok(contributed.has(command), `${where} places ${command}, which is not contributed`);
+    }
   }
 });
 

@@ -64,6 +64,187 @@
         "category": "ank",
         "icon": "$(info)",
         "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.context",
+        "title": "Context",
+        "category": "ank",
+        "icon": "$(compass)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.claim",
+        "title": "Claim Task",
+        "category": "ank",
+        "icon": "$(circle-outline)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.show",
+        "title": "Show Entity",
+        "category": "ank",
+        "icon": "$(book)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.log",
+        "title": "Log Against Task",
+        "category": "ank",
+        "icon": "$(pencil)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.readLog",
+        "title": "Read Log",
+        "category": "ank",
+        "icon": "$(history)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.done",
+        "title": "Finish Task",
+        "category": "ank",
+        "icon": "$(pass)",
+        "enablement": "ank.hasClaim"
+      },
+      {
+        "command": "ank.release",
+        "title": "Release Task",
+        "category": "ank",
+        "icon": "$(debug-disconnect)",
+        "enablement": "ank.hasClaim"
+      },
+      {
+        "command": "ank.new.task",
+        "title": "New Task",
+        "category": "ank",
+        "icon": "$(add)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.new.adr",
+        "title": "New Decision",
+        "category": "ank",
+        "icon": "$(law)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.new.spec",
+        "title": "New Specification",
+        "category": "ank",
+        "icon": "$(book)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.amend",
+        "title": "Amend Entity",
+        "category": "ank",
+        "icon": "$(edit)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.read",
+        "title": "Record a Reading",
+        "category": "ank",
+        "icon": "$(eye)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.close",
+        "title": "Close Task",
+        "category": "ank",
+        "icon": "$(circle-slash)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.attest",
+        "title": "Attest a Proof",
+        "category": "ank",
+        "icon": "$(verified)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.review",
+        "title": "Review",
+        "category": "ank",
+        "icon": "$(checklist)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.accept",
+        "title": "Ratify a Decision…",
+        "category": "ank",
+        "icon": "$(key)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.find",
+        "title": "Find",
+        "category": "ank",
+        "icon": "$(search)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.scope",
+        "title": "What Binds This File",
+        "category": "ank",
+        "icon": "$(law)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.graph",
+        "title": "Graph",
+        "category": "ank",
+        "icon": "$(type-hierarchy)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.tui",
+        "title": "Open the TUI",
+        "category": "ank",
+        "icon": "$(terminal)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.check",
+        "title": "Check",
+        "category": "ank",
+        "icon": "$(shield)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.edit",
+        "title": "Edit Entity",
+        "category": "ank",
+        "icon": "$(edit)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.migrate",
+        "title": "Migrate",
+        "category": "ank",
+        "icon": "$(arrow-swap)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.config",
+        "title": "Config",
+        "category": "ank",
+        "icon": "$(gear)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.init",
+        "title": "Create a Corpus",
+        "category": "ank",
+        "icon": "$(repo-create)",
+        "enablement": "ank.hasBinary"
+      },
+      {
+        "command": "ank.installHint",
+        "title": "Copy the Install Command",
+        "category": "ank",
+        "icon": "$(clippy)"
       }
     ],
     "viewsContainers": {
@@ -117,15 +298,95 @@
       "view/title": [
         {
           "command": "ank.refresh",
-          "when": "view == ank.tasks || view == ank.decisions || view == ank.graph",
-          "group": "navigation"
+          "when": "view =~ /^ank./",
+          "group": "navigation@9"
+        },
+        {
+          "command": "ank.new.task",
+          "when": "view == ank.tasks",
+          "group": "navigation@1"
+        },
+        {
+          "command": "ank.new.adr",
+          "when": "view == ank.decisions",
+          "group": "navigation@1"
+        },
+        {
+          "command": "ank.check",
+          "when": "view == ank.tasks",
+          "group": "1_corpus@1"
+        },
+        {
+          "command": "ank.review",
+          "when": "view == ank.decisions",
+          "group": "1_corpus@1"
+        },
+        {
+          "command": "ank.context",
+          "when": "view == ank.tasks",
+          "group": "1_corpus@2"
+        },
+        {
+          "command": "ank.tui",
+          "when": "view == ank.tasks",
+          "group": "1_corpus@3"
         }
       ],
       "view/item/context": [
         {
           "command": "ank.openFile",
-          "when": "viewItem =~ /^ank\\.(task|adr|spec)/",
+          "when": "viewItem =~ /^ank.(task|adr|spec)/",
           "group": "inline"
+        },
+        {
+          "command": "ank.claim",
+          "when": "viewItem == ank.task.ready",
+          "group": "1_loop@1"
+        },
+        {
+          "command": "ank.log",
+          "when": "viewItem == ank.task.held",
+          "group": "1_loop@1"
+        },
+        {
+          "command": "ank.done",
+          "when": "viewItem == ank.task.held",
+          "group": "1_loop@2"
+        },
+        {
+          "command": "ank.release",
+          "when": "viewItem == ank.task.held",
+          "group": "1_loop@3"
+        },
+        {
+          "command": "ank.readLog",
+          "when": "viewItem =~ /^ank.task/",
+          "group": "2_read@1"
+        },
+        {
+          "command": "ank.amend",
+          "when": "viewItem =~ /^ank.(task|adr|spec)/",
+          "group": "3_shape@1"
+        },
+        {
+          "command": "ank.edit",
+          "when": "viewItem =~ /^ank.(task|adr|spec)/",
+          "group": "3_shape@2"
+        },
+        {
+          "command": "ank.close",
+          "when": "viewItem =~ /^ank.task.(ready|blocked)/",
+          "group": "3_shape@3"
+        },
+        {
+          "command": "ank.read",
+          "when": "viewItem =~ /^ank.(adr|spec)/",
+          "group": "2_read@2"
+        },
+        {
+          "command": "ank.accept",
+          "when": "viewItem =~ /^ank.(adr|spec).proposed/",
+          "group": "4_ratify@1"
         }
       ],
       "commandPalette": [
@@ -136,6 +397,20 @@
         {
           "command": "ank.openFile",
           "when": "false"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "ank.scope",
+          "when": "ank.hasCorpus && !explorerResourceIsFolder",
+          "group": "ank@1"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "ank.scope",
+          "when": "ank.hasCorpus",
+          "group": "ank@1"
         }
       ]
     },
