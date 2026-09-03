@@ -621,7 +621,8 @@
     "test": "npm run compile:test && node --test \"out/test/unit/**/*.test.js\"",
     "test:integration": "npm run compile && npm run compile:test && vscode-test",
     "package": "npm run compile && vsce package",
-    "vscode:prepublish": "npm run compile -- --production"
+    "vscode:prepublish": "npm run compile -- --production",
+    "icon": "node scripts/icon.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
@@ -635,5 +636,10 @@
     "eslint": "^9.39.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.47.0"
+  },
+  "icon": "resources/icon.png",
+  "galleryBanner": {
+    "color": "#14171f",
+    "theme": "dark"
   }
 }

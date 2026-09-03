@@ -14,3 +14,5 @@ esbuild.mjs
 .gitignore
 .gitattributes
 AGENTS.md
+scripts/**
+resources/ank-source/**
