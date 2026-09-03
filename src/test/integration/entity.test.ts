@@ -158,6 +158,32 @@ suite('the extension', () => {
     assert.ok(found.results.every((row) => row.kind === 'task'));
   });
 
+  test('check fills the Problems panel, with signals as information', async () => {
+    await vscode.commands.executeCommand('ank.check');
+
+    const reported = vscode.languages
+      .getDiagnostics()
+      .flatMap(([, diagnostics]) => diagnostics)
+      .filter((diagnostic) => diagnostic.source === 'ank');
+
+    // This repository carries the milestones that built the extension, and at
+    // least the corpus-level signals `check` always has something to say
+    // about, so an empty panel would mean the command did nothing.
+    assert.ok(reported.length > 0, 'check reported nothing at all');
+
+    for (const diagnostic of reported) {
+      if (diagnostic.code === 'signal') {
+        assert.equal(
+          diagnostic.severity,
+          vscode.DiagnosticSeverity.Information,
+          'a signal must not be a warning',
+        );
+      } else {
+        assert.equal(diagnostic.severity, vscode.DiagnosticSeverity.Error);
+      }
+    }
+  });
+
   test('contributes every command it registered', async () => {
     const registered = await vscode.commands.getCommands(true);
     const contributed = (

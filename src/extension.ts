@@ -10,6 +10,7 @@ import {
   EntityDocumentProvider,
   entityUri,
 } from './providers/entityDocument';
+import { Findings } from './providers/diagnostics';
 import { EntityPanel } from './providers/entityPanel';
 import { BindsView } from './ui/bindsView';
 import { DecisionsView } from './ui/decisionsView';
@@ -58,7 +59,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const registry = new CorpusRegistry(binary.cli, log);
   const documents = new EntityDocumentProvider(registry);
   const panel = new EntityPanel(context.extensionUri, offered);
-  context.subscriptions.push(registry, documents, panel);
+  const findings = new Findings();
+  context.subscriptions.push(registry, documents, panel, findings);
 
   context.subscriptions.push(
     vscode.workspace.registerTextDocumentContentProvider(ANK_SCHEME, documents),
@@ -121,15 +123,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         true,
       );
     },
-    onFindings: () => {
-      // Findings land in the Problems panel once the diagnostics layer is
-      // wired. Until then the check command shows them itself.
-    },
+    onFindings: (corpus, checked) => findings.report(corpus, checked),
   });
 
   for (const id of fromTable) {
     offered.add(id);
   }
+
+  context.subscriptions.push(
+    vscode.workspace.onDidSaveTextDocument(async (saved) => {
+      // Off by default, and never a timer even when on: `check` prunes claim
+      // refs and walks git history, so it runs when somebody did something.
+      if (!vscode.workspace.getConfiguration('ank').get<boolean>('check.onSave', false)) {
+        return;
+      }
+      const corpus = registry.forUri(saved.uri);
+      if (corpus && saved.uri.scheme === 'file') {
+        await vscode.commands.executeCommand('ank.check');
+      }
+    }),
+  );
 
   await registry.start();
   await announce(registry);

@@ -19,7 +19,7 @@ import type { Log } from '../log';
 import { Corpus } from './corpus';
 
 /** A workspace folder is a corpus when it carries a config the CLI wrote. */
-const MARKER = '.ank/config.yml';
+export const MARKER = '.ank/config.yml';
 
 export class CorpusRegistry implements vscode.Disposable {
   private readonly open = new Map<string, Corpus>();

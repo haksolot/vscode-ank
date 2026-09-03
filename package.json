@@ -428,6 +428,11 @@
           "default": "",
           "markdownDescription": "The identity this window writes claims under, as `$ANK_AGENT`. Empty derives one from the editor. Two windows on one working tree sharing an identity are **one agent** to the claim refs: they share a claim instead of arbitrating over it, and the second is quietly refused work it should have been given.",
           "scope": "machine-overridable"
+        },
+        "ank.check.onSave": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Run `ank check` when a file in a corpus is saved. Off by default, and worth leaving off: `check` prunes the stale claim refs it finds, so it writes, and it walks git history to say where a dead scope went. It is the verb a person runs deliberately."
         }
       }
     }
