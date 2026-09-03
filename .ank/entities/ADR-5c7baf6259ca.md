@@ -9,9 +9,9 @@ status: proposed
 scope:
   - src/lm/**
 constraint: |
-  Tools registered with vscode.lm expose context, find, show, scope, status and graph, and no verb that writes to the corpus, to git refs or to the filesystem.
+  Tools registered with vscode.lm expose only verbs that read: context, find, show, scope, status and graph. No tool claims, finishes, logs, releases, creates, amends, closes, ratifies, or runs check. Renewing a lease the caller already holds is permitted, because an agent calling show is working; taking one is not.
 schema: 4
-version: 1
+version: 2
 ---
 
 A tool call is a decision the model makes and the user approves in a dialog

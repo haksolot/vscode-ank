@@ -4,7 +4,9 @@ import { AnkCli, AnkError, Capabilities, INSTALL_HINT, locate } from './ank';
 import type { Located } from './ank';
 import { registerCommands } from './commands';
 import { CorpusRegistry } from './corpus/registry';
+import { registerTools } from './lm/tools';
 import { Log } from './log';
+import { AnkMcpProvider, declare, MCP_PROVIDER_ID } from './mcp/provider';
 import {
   ANK_SCHEME,
   EntityDocumentProvider,
@@ -129,6 +131,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   for (const id of fromTable) {
     offered.add(id);
   }
+
+  // The editor spawns `ank mcp` itself, with the binary this extension
+  // resolved rather than the name on the PATH -- on Windows those differ, and
+  // a configuration file naming `ank` would start a server nothing can spawn.
+  const mcp = new AnkMcpProvider(registry, binary.located, agentOf());
+  context.subscriptions.push(
+    mcp,
+    vscode.lm.registerMcpServerDefinitionProvider(MCP_PROVIDER_ID, mcp),
+    registry.onDidChange(() => mcp.refresh()),
+    vscode.commands.registerCommand('ank.declareCorpus', () =>
+      declare(binary.cli, registry, log as Log),
+    ),
+  );
+  offered.add('ank.declareCorpus');
+
+  registerTools(context, registry, binary.capabilities);
 
   context.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument(async (saved) => {
@@ -319,9 +337,21 @@ async function open(sink: Log): Promise<Binary | undefined> {
  * should have been given.
  */
 function environment(configured: string): Record<string, string> {
-  const agent =
-    configured.trim() !== '' ? configured.trim() : `vscode/${vscode.version}@${machine()}`;
-  return { ANK_AGENT: agent };
+  return { ANK_AGENT: agentOf(configured) };
+}
+
+/**
+ * The identity, computed the same way wherever it is needed.
+ *
+ * The MCP server writes under `ank-mcp/<version>` unless `$ANK_AGENT` names
+ * one. It has to be handed this window's, because two surfaces writing under
+ * two names are two agents to the claim refs -- and one of them would be
+ * refused work the other is holding.
+ */
+function agentOf(configured?: string): string {
+  const named =
+    configured ?? vscode.workspace.getConfiguration('ank').get<string>('agent', '');
+  return named.trim() !== '' ? named.trim() : `vscode/${vscode.version}@${machine()}`;
 }
 
 /**

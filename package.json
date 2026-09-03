@@ -245,6 +245,13 @@
         "title": "Copy the Install Command",
         "category": "ank",
         "icon": "$(clippy)"
+      },
+      {
+        "command": "ank.declareCorpus",
+        "title": "Declare a Corpus for MCP",
+        "category": "ank",
+        "icon": "$(server)",
+        "enablement": "ank.hasCorpus"
       }
     ],
     "viewsContainers": {
@@ -435,7 +442,175 @@
           "markdownDescription": "Run `ank check` when a file in a corpus is saved. Off by default, and worth leaving off: `check` prunes the stale claim refs it finds, so it writes, and it walks git history to say where a dead scope went. It is the verb a person runs deliberately."
         }
       }
-    }
+    },
+    "languageModelTools": [
+      {
+        "name": "ank_context",
+        "toolReferenceName": "ankContext",
+        "displayName": "ank context",
+        "userDescription": "Read the corpus with ank context.",
+        "modelDescription": "what binds this perimeter and what is claimable; with a claim held, the criterion and the constraints in full",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(law)",
+        "tags": [
+          "ank"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "A path to narrow the perimeter to. Omit for the whole corpus."
+            },
+            "corpus": {
+              "type": "string",
+              "description": "The repository identity of the corpus to read: the root commit, which ank status prints under \"corpus\". Never a path. Omit it where only one corpus is open."
+            }
+          }
+        }
+      },
+      {
+        "name": "ank_find",
+        "toolReferenceName": "ankFind",
+        "displayName": "ank find",
+        "userDescription": "Read the corpus with ank find.",
+        "modelDescription": "searches titles, scopes and criteria; --type spec reaches the specification, --status open lists what remains",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(law)",
+        "tags": [
+          "ank"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Words to search titles, scopes and criteria for. Omit to list everything a filter allows."
+            },
+            "type": {
+              "type": "string",
+              "description": "One kind: task, adr, spec or log."
+            },
+            "status": {
+              "type": "string",
+              "description": "One status: open, in_progress, done, closed, proposed or accepted."
+            },
+            "corpus": {
+              "type": "string",
+              "description": "The repository identity of the corpus to read: the root commit, which ank status prints under \"corpus\". Never a path. Omit it where only one corpus is open."
+            }
+          }
+        }
+      },
+      {
+        "name": "ank_show",
+        "toolReferenceName": "ankShow",
+        "displayName": "ank show",
+        "userDescription": "Read the corpus with ank show.",
+        "modelDescription": "the entity whole, frontmatter and body, byte for byte",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(law)",
+        "tags": [
+          "ank"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "The entity id, or a prefix of it long enough to be unambiguous."
+            },
+            "corpus": {
+              "type": "string",
+              "description": "The repository identity of the corpus to read: the root commit, which ank status prints under \"corpus\". Never a path. Omit it where only one corpus is open."
+            }
+          },
+          "required": [
+            "id"
+          ]
+        }
+      },
+      {
+        "name": "ank_scope",
+        "toolReferenceName": "ankScope",
+        "displayName": "ank scope",
+        "userDescription": "Read the corpus with ank scope.",
+        "modelDescription": "what covers a path: the constraints that bind it, the specifications that govern it, and the tasks that touch it",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(law)",
+        "tags": [
+          "ank"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "The path to ask about, relative to the repository root."
+            },
+            "corpus": {
+              "type": "string",
+              "description": "The repository identity of the corpus to read: the root commit, which ank status prints under \"corpus\". Never a path. Omit it where only one corpus is open."
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      },
+      {
+        "name": "ank_status",
+        "toolReferenceName": "ankStatus",
+        "displayName": "ank status",
+        "userDescription": "Read the corpus with ank status.",
+        "modelDescription": "where am I: branch, claim, perimeter, queue, findings",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(law)",
+        "tags": [
+          "ank"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "corpus": {
+              "type": "string",
+              "description": "The repository identity of the corpus to read: the root commit, which ank status prints under \"corpus\". Never a path. Omit it where only one corpus is open."
+            }
+          }
+        }
+      },
+      {
+        "name": "ank_graph",
+        "toolReferenceName": "ankGraph",
+        "displayName": "ank graph",
+        "userDescription": "Read the corpus with ank graph.",
+        "modelDescription": "the blocked_by DAG in readable text, indented under what blocks it",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(law)",
+        "tags": [
+          "ank"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "A path to narrow the graph to."
+            },
+            "corpus": {
+              "type": "string",
+              "description": "The repository identity of the corpus to read: the root commit, which ank status prints under \"corpus\". Never a path. Omit it where only one corpus is open."
+            }
+          }
+        }
+      }
+    ],
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "ank",
+        "label": "ank"
+      }
+    ]
   },
   "scripts": {
     "compile": "npm run check-types && node esbuild.mjs",

@@ -17,5 +17,8 @@ export default defineConfig({
   // against a real one rather than against a fixture that would drift.
   workspaceFolder: '.',
   ...(installed ? { useInstallation: { fromPath: installed } } : { version: 'stable' }),
-  mocha: { ui: 'tdd', timeout: 60_000 },
+  // Generous on purpose. `ank check` walks git history and gets slower as a
+  // corpus grows: over this repository it already takes upwards of two
+  // minutes, which is the measured half of why it must never be a poll.
+  mocha: { ui: 'tdd', timeout: 240_000 },
 });

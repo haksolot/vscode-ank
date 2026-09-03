@@ -184,6 +184,33 @@ suite('the extension', () => {
     }
   });
 
+  test('registers a read-only tool for each verb it offers', async () => {
+    const contributed = (
+      vscode.extensions.getExtension(EXTENSION)?.packageJSON as {
+        contributes?: { languageModelTools?: { name: string }[] };
+      }
+    ).contributes?.languageModelTools;
+
+    assert.ok(contributed);
+    const names = new Set(contributed.map((tool) => tool.name));
+
+    // `vscode.lm.tools` lists what the host actually accepted, so a tool the
+    // manifest declares and the code never registered shows up as missing.
+    const live = vscode.lm.tools.filter((tool) => names.has(tool.name));
+    assert.equal(live.length, contributed.length);
+
+    // The descriptions come from the verb table, so they are the CLI's words.
+    const help = ank<{ verbs: { name: string; summary: string }[] }>(['help']);
+    for (const tool of live) {
+      const verb = tool.name.replace(/^ank_/, '');
+      const declared = help.verbs.find((candidate) => candidate.name === verb);
+      assert.ok(declared, `${tool.name} names no verb`);
+      assert.equal(tool.description, declared.summary);
+    }
+
+    await Promise.resolve();
+  });
+
   test('contributes every command it registered', async () => {
     const registered = await vscode.commands.getCommands(true);
     const contributed = (
