@@ -123,6 +123,41 @@ suite('the extension', () => {
     assert.equal(extension.isActive, true);
   });
 
+  test('registers every view its container declares', async () => {
+    // A declared view with no provider renders as a permanently empty pane.
+    const declared = (
+      vscode.extensions.getExtension(EXTENSION)?.packageJSON as {
+        contributes?: { views?: Record<string, { id: string }[]> };
+      }
+    ).contributes?.views?.['ank'];
+
+    assert.ok(declared);
+    assert.deepEqual(
+      declared.map((view) => view.id).sort(),
+      ['ank.binds', 'ank.decisions', 'ank.graph', 'ank.tasks'],
+    );
+
+    // Focusing a view that has no provider throws rather than doing nothing.
+    for (const view of declared) {
+      await vscode.commands.executeCommand(`${view.id}.focus`);
+    }
+  });
+
+  test('reads this repository and finds its own tasks', async () => {
+    await vscode.commands.executeCommand('ank.refresh');
+
+    const found = ank<{ total: number; results: { kind: string }[] }>([
+      'find',
+      '--type',
+      'task',
+    ]);
+
+    // The repository the tests run in carries the milestones that built the
+    // extension, so a corpus with no tasks would mean the read failed.
+    assert.ok(found.total > 0);
+    assert.ok(found.results.every((row) => row.kind === 'task'));
+  });
+
   test('contributes every command it registered', async () => {
     const registered = await vscode.commands.getCommands(true);
     const contributed = (

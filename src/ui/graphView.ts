@@ -17,7 +17,7 @@ import * as vscode from 'vscode';
 import type { Corpus } from '../corpus/corpus';
 import type { CorpusRegistry } from '../corpus/registry';
 import type { ReadyTask } from '../corpus/refresh';
-import { taskIcon } from './meaning';
+import { taskIcon } from './theme';
 import { GroupNode, markdown, MessageNode, perCorpus, shortId } from './tree';
 
 /** A node in the DAG, carrying the path that reached it. */

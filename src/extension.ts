@@ -10,6 +10,11 @@ import {
   entityUri,
 } from './providers/entityDocument';
 import { EntityPanel } from './providers/entityPanel';
+import { BindsView } from './ui/bindsView';
+import { DecisionsView } from './ui/decisionsView';
+import { GraphView } from './ui/graphView';
+import { StatusBar } from './ui/statusBar';
+import { TasksView } from './ui/tasksView';
 import type { EntityRef } from './ui/tree';
 
 /** What the extension resolved at activation. */
@@ -20,7 +25,13 @@ interface Binary {
 }
 
 /** The commands this build registers. The panel is told, rather than assuming. */
-const OFFERED = new Set(['ank.showLog', 'ank.refresh', 'ank.open', 'ank.openFile']);
+const OFFERED = new Set([
+  'ank.showLog',
+  'ank.refresh',
+  'ank.open',
+  'ank.openFile',
+  'ank.status',
+]);
 
 let log: Log | undefined;
 
@@ -52,8 +63,27 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.workspace.registerTextDocumentContentProvider(ANK_SCHEME, documents),
   );
 
+  const tasks = new TasksView(registry);
+  const decisions = new DecisionsView(registry);
+  const graph = new GraphView(registry);
+  const binds = new BindsView(registry, log);
+  const statusBar = new StatusBar(registry);
+  context.subscriptions.push(binds, statusBar);
+
+  context.subscriptions.push(
+    vscode.window.createTreeView('ank.tasks', { treeDataProvider: tasks }),
+    vscode.window.createTreeView('ank.decisions', { treeDataProvider: decisions }),
+    vscode.window.createTreeView('ank.graph', { treeDataProvider: graph }),
+    vscode.window.createTreeView('ank.binds', { treeDataProvider: binds }),
+  );
+
   context.subscriptions.push(
     registry.onDidChange(() => {
+      // One repaint, four views. They all read the same snapshot, so a corpus
+      // that moved is one read and not four.
+      tasks.refresh();
+      decisions.refresh();
+      graph.refresh();
       void announce(registry);
     }),
   );
@@ -69,6 +99,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('ank.openFile', (ref: EntityRef) =>
       openEntity(ref, documents, panel, false),
     ),
+    vscode.commands.registerCommand('ank.status', () => showStatus(registry)),
   );
 
   await registry.start();
@@ -110,6 +141,90 @@ async function openEntity(
       panel.reveal(ref.corpus, ref.id, shown);
     }
   }
+}
+
+/**
+ * Where am I, in full.
+ *
+ * The status bar shows one line of this. The rest -- the drift from the
+ * default branch, who holds what elsewhere, the counts -- is what a person
+ * asks for by clicking it, and every value comes from the last repaint rather
+ * than from a fresh read: `status` is a repaint verb, and the snapshot is
+ * never more than one event old.
+ */
+async function showStatus(registry: CorpusRegistry): Promise<void> {
+  const rows: vscode.QuickPickItem[] = [];
+
+  for (const corpus of registry.corpora) {
+    const snapshot = corpus.snapshot;
+    if (!snapshot) {
+      rows.push({ label: corpus.name, description: 'not read yet' });
+      continue;
+    }
+
+    const { status } = snapshot;
+    if (registry.corpora.length > 1) {
+      rows.push({ label: corpus.name, kind: vscode.QuickPickItemKind.Separator });
+    }
+
+    rows.push({
+      label: '$(git-branch) branch',
+      description: status.branch ?? 'detached HEAD',
+      detail:
+        status.default_branch === null
+          ? 'the default branch could not be determined'
+          : `default ${status.default_branch}`,
+    });
+    rows.push({
+      label: '$(account) identity',
+      description: status.identity.value,
+      detail: `from ${status.identity.source}`,
+    });
+    rows.push(
+      status.claim === null
+        ? { label: '$(circle-outline) claim', description: 'none held here' }
+        : {
+            label: '$(circle-filled) claim',
+            description: status.claim.id,
+            detail: status.claim.lapsed
+              ? 'lapsed: log against it to renew, or release it and say why'
+              : `expires ${status.claim.expires}`,
+          },
+    );
+    if (status.drift !== null) {
+      rows.push({
+        label: '$(git-compare) drift',
+        description: `${String(status.drift.entities)} entity file(s) differ from ${status.drift.branch}`,
+        detail: 'a stale base turns a green tree red elsewhere',
+      });
+    }
+    for (const other of status.elsewhere) {
+      rows.push({
+        label: '$(person) elsewhere',
+        description: `${other.id} held by ${other.holder ?? 'somebody'}`,
+        ...(other.title === null ? {} : { detail: other.title }),
+      });
+    }
+    rows.push({
+      label: '$(law) corpus',
+      description: `${String(status.queue)} proposal(s), ${String(status.faults)} fault(s), ${String(status.signals)} signal(s)`,
+      ...(status.unmerged > 0
+        ? {
+            detail: `${String(status.unmerged)} task(s) finished on another branch and not merged here`,
+          }
+        : {}),
+    });
+  }
+
+  if (rows.length === 0) {
+    await vscode.window.showInformationMessage('No corpus in this workspace.');
+    return;
+  }
+
+  await vscode.window.showQuickPick(rows, {
+    title: 'ank status',
+    placeHolder: 'from the last read; nothing here starts one',
+  });
 }
 
 /**

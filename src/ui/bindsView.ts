@@ -19,7 +19,8 @@ import { AnkError, type ScopeDocument, type ScopeRow } from '../ank';
 import type { Corpus } from '../corpus/corpus';
 import type { CorpusRegistry } from '../corpus/registry';
 import type { Log } from '../log';
-import { iconOf, roleOfStatus } from './meaning';
+import { roleOfStatus } from './meaning';
+import { iconOf } from './theme';
 import {
   childrenOf,
   EntityNode,

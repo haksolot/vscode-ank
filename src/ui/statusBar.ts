@@ -13,7 +13,7 @@
 import * as vscode from 'vscode';
 
 import type { CorpusRegistry } from '../corpus/registry';
-import { colourOf } from './meaning';
+import { colourOf } from './theme';
 
 export class StatusBar implements vscode.Disposable {
   private readonly item: vscode.StatusBarItem;

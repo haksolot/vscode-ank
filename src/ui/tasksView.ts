@@ -13,7 +13,8 @@ import * as vscode from 'vscode';
 import type { Corpus } from '../corpus/corpus';
 import type { CorpusRegistry } from '../corpus/registry';
 import type { ReadyTask } from '../corpus/refresh';
-import { addressingOf, taskIcon } from './meaning';
+import { addressingOf } from './meaning';
+import { taskIcon } from './theme';
 import {
   childrenOf,
   EntityNode,

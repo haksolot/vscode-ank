@@ -1,14 +1,16 @@
 /**
- * What a status means, and how it looks (ADR-2a33a9a3bda3).
+ * What a status means (ADR-2a33a9a3bda3).
  *
  * Upstream publishes meanings rather than colours: a name maps to a role, and
  * the client picks how a role looks. No escape sequence is ever shipped from
  * there, and no second vocabulary of statuses is defined here. A name the
  * table does not carry has no role, and no role means leave it alone -- the
  * default foreground, not a colour we invented for the unknown.
+ *
+ * Nothing in this file imports `vscode`. What a role looks like is in
+ * `theme.ts`; what a name means is here, so the two lookup rules can be tested
+ * without an editor.
  */
-
-import * as vscode from 'vscode';
 
 /** The roles the meaning table maps names onto. */
 export type Role =
@@ -80,12 +82,23 @@ export function roleOfSeverity(level: string): Role | null {
 }
 
 /**
- * The colour a role wears.
+ * The part of a state after the colon: who holds it, or where it finished.
  *
- * Every one is a theme token rather than a hex value, so the extension follows
- * whatever the user is running rather than asserting a palette over it.
+ * Null where the state carries no addressing, which is most of the time.
  */
-const COLOUR: Readonly<Record<Role, string | null>> = {
+export function addressingOf(state: string): string | null {
+  const colon = state.indexOf(':');
+  return colon === -1 ? null : state.slice(colon + 1).trim() || null;
+}
+
+/**
+ * The colour token a role wears.
+ *
+ * A theme token rather than a hex value, so the extension follows whatever the
+ * user is running rather than asserting a palette over it. Null means the
+ * default foreground.
+ */
+export const COLOUR: Readonly<Record<Role, string | null>> = {
   available: 'charts.blue',
   underway: 'charts.yellow',
   accomplished: 'charts.green',
@@ -96,8 +109,8 @@ const COLOUR: Readonly<Record<Role, string | null>> = {
   identifier: null,
 };
 
-/** The icon a role wears in a tree. */
-const ICON: Readonly<Record<Role, string>> = {
+/** The codicon a role wears in a tree. */
+export const ICON: Readonly<Record<Role, string>> = {
   available: 'circle-outline',
   underway: 'circle-filled',
   accomplished: 'pass-filled',
@@ -107,43 +120,3 @@ const ICON: Readonly<Record<Role, string>> = {
   fault: 'error',
   identifier: 'symbol-file',
 };
-
-export function colourOf(role: Role | null): vscode.ThemeColor | undefined {
-  if (role === null) {
-    return undefined;
-  }
-  const token = COLOUR[role];
-  return token === null ? undefined : new vscode.ThemeColor(token);
-}
-
-export function iconOf(role: Role | null, fallback = 'circle-outline'): vscode.ThemeIcon {
-  if (role === null) {
-    return new vscode.ThemeIcon(fallback);
-  }
-  return new vscode.ThemeIcon(ICON[role], colourOf(role));
-}
-
-/**
- * The icon for a task, which is the one case a status alone does not settle.
- *
- * A blocked task is `open` in its file. Blockedness is an edge, and a view
- * that showed it as plain `open` would be true to the file and useless to the
- * reader, so it is derived here exactly as ank derives it.
- */
-export function taskIcon(state: string, ready: boolean): vscode.ThemeIcon {
-  const role = roleOfStatus(state);
-  if (role === 'available' && !ready) {
-    return new vscode.ThemeIcon('circle-large-outline', colourOf('retired'));
-  }
-  return iconOf(role);
-}
-
-/**
- * The part of a state after the colon: who holds it, or where it finished.
- *
- * Null where the state carries no addressing, which is most of the time.
- */
-export function addressingOf(state: string): string | null {
-  const colon = state.indexOf(':');
-  return colon === -1 ? null : state.slice(colon + 1).trim() || null;
-}

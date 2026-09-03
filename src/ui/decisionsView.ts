@@ -13,7 +13,8 @@ import * as vscode from 'vscode';
 import type { FindResult } from '../ank';
 import type { Corpus } from '../corpus/corpus';
 import type { CorpusRegistry } from '../corpus/registry';
-import { iconOf, roleOfStatus } from './meaning';
+import { roleOfStatus } from './meaning';
+import { iconOf } from './theme';
 import {
   childrenOf,
   EntityNode,

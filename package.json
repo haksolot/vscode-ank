@@ -57,8 +57,88 @@
         "category": "ank",
         "icon": "$(go-to-file)",
         "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.status",
+        "title": "Status",
+        "category": "ank",
+        "icon": "$(info)",
+        "enablement": "ank.hasCorpus"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ank",
+          "title": "ank",
+          "icon": "resources/ank.svg"
+        }
+      ]
+    },
+    "views": {
+      "ank": [
+        {
+          "id": "ank.tasks",
+          "name": "Tasks",
+          "icon": "resources/ank.svg"
+        },
+        {
+          "id": "ank.binds",
+          "name": "Binds This File",
+          "icon": "resources/ank.svg"
+        },
+        {
+          "id": "ank.decisions",
+          "name": "Decisions",
+          "icon": "resources/ank.svg",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "ank.graph",
+          "name": "Graph",
+          "icon": "resources/ank.svg",
+          "visibility": "collapsed"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "ank.tasks",
+        "contents": "No corpus in this workspace.\n\nank keeps tasks and architecture decisions in the repository, attached to the code they constrain.\n[Read about ank](https://github.com/haksolot/ank)",
+        "when": "!ank.hasCorpus && ank.hasBinary"
+      },
+      {
+        "view": "ank.tasks",
+        "contents": "The ank executable was not found.\n\n$(terminal) npm install -g @haksolot/ank\n\nOr set the path to it in your settings.\n[Open Settings](command:workbench.action.openSettings?%22ank.path%22)",
+        "when": "!ank.hasBinary"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "ank.refresh",
+          "when": "view == ank.tasks || view == ank.decisions || view == ank.graph",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "ank.openFile",
+          "when": "viewItem =~ /^ank\\.(task|adr|spec)/",
+          "group": "inline"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "ank.open",
+          "when": "false"
+        },
+        {
+          "command": "ank.openFile",
+          "when": "false"
+        }
+      ]
+    },
     "configuration": {
       "title": "ank",
       "properties": {
