@@ -2,7 +2,7 @@
 id: ADR-eddf502cd27b
 type: adr
 slug: a-repaint-calls-status-and-find-and-nothing-else
-title: A repaint calls status and find, and nothing else
+title: An unattended refresh never renews a lease and never writes
 created: 2026-09-03T11:35:28Z
 author: claude-opus-5@vscode-ank
 status: proposed
@@ -12,7 +12,7 @@ scope:
 constraint: |
   No refresh the user did not ask for may run a verb that renews a lease or writes: context, show, read, amend, attest, edit, check and review are reached from an explicit user action and from no timer. A corpus repaint runs status, find and graph. A view answering the user's own navigation may additionally run scope. None of those four renews a lease or writes.
 schema: 4
-version: 3
+version: 4
 ---
 
 Two separate hazards make this one rule.
