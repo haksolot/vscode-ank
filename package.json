@@ -37,6 +37,13 @@
         "command": "ank.showLog",
         "title": "Show Log",
         "category": "ank"
+      },
+      {
+        "command": "ank.refresh",
+        "title": "Refresh",
+        "category": "ank",
+        "icon": "$(refresh)",
+        "enablement": "ank.hasCorpus"
       }
     ],
     "configuration": {

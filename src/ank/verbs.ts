@@ -280,10 +280,16 @@ export class Ank {
 
   /* ------------------------------------------------------- look around */
 
-  async find(query: string, options: FindOptions = {}): Promise<FindDocument> {
+  /**
+   * Searches titles, scopes and criteria.
+   *
+   * The query is optional where a filter narrows the search: `find --type
+   * task` lists every task, which is what a listing view asks for.
+   */
+  async find(query?: string, options: FindOptions = {}): Promise<FindDocument> {
     const argv = [
       'find',
-      query,
+      ...positional(query),
       ...flag('--type', options.type),
       ...flag('--status', options.status),
       ...flag('--scope', options.scope),

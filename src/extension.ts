@@ -2,18 +2,20 @@ import * as vscode from 'vscode';
 
 import { AnkCli, AnkError, Capabilities, INSTALL_HINT, locate } from './ank';
 import type { Located } from './ank';
+import { CorpusRegistry } from './corpus/registry';
 import { Log } from './log';
 
 /**
  * What the extension resolved at activation.
  *
- * Held so the layers built on top of it can be handed one adapter rather than
+ * Held so the layers built on top of it are handed one adapter rather than
  * each locating the binary again.
  */
 export interface Session {
   cli: AnkCli;
   located: Located;
   capabilities: Capabilities;
+  registry: CorpusRegistry;
 }
 
 let log: Log | undefined;
@@ -26,24 +28,60 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('ank.showLog', () => log?.show()),
   );
 
-  const session = await open(log);
-  await vscode.commands.executeCommand(
-    'setContext',
-    'ank.hasBinary',
-    session !== undefined,
+  const opened = await open(log);
+  await setContext('ank.hasBinary', opened !== undefined);
+
+  if (!opened) {
+    return;
+  }
+
+  const { cli, located, capabilities } = opened;
+  log.info(
+    `ank ${located.version} at ${located.binary}, ` +
+      `${String(capabilities.verbs.length)} verbs`,
   );
 
-  if (session) {
-    log.info(
-      `ank ${session.located.version} at ${session.located.binary}, ` +
-        `${String(session.capabilities.verbs.length)} verbs`,
-    );
-  }
+  const registry = new CorpusRegistry(cli, log);
+  context.subscriptions.push(registry);
+
+  context.subscriptions.push(
+    registry.onDidChange(() => {
+      void announce(registry);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ank.refresh', async () => {
+      await Promise.all(registry.corpora.map((corpus) => corpus.refresh()));
+    }),
+  );
+
+  await registry.start();
+  await announce(registry);
 }
 
 export function deactivate(): void {
   // Everything this extension owns is on `context.subscriptions`, which the
   // host disposes for us. Nothing is left to unwind by hand.
+}
+
+/**
+ * The context keys the manifest gates commands and views on.
+ *
+ * `ank.hasClaim` is true where any open corpus reports a claim held by this
+ * identity. It is a disjunction and never a count: several corpora are several
+ * repositories, and a number across them would be a fiction.
+ */
+async function announce(registry: CorpusRegistry): Promise<void> {
+  const held = registry.corpora.some(
+    (corpus) => corpus.snapshot?.status.claim != null,
+  );
+  await setContext('ank.hasCorpus', !registry.empty);
+  await setContext('ank.hasClaim', held);
+}
+
+function setContext(key: string, value: boolean): Thenable<unknown> {
+  return vscode.commands.executeCommand('setContext', key, value);
 }
 
 /**
@@ -54,9 +92,12 @@ export function deactivate(): void {
  * extension stays loaded rather than throwing out of activation -- the user
  * may install ank and reload without hunting for a setting.
  */
-async function open(sink: Log): Promise<Session | undefined> {
-  const configured = vscode.workspace.getConfiguration('ank').get<string>('path', '');
-  const agent = vscode.workspace.getConfiguration('ank').get<string>('agent', '');
+async function open(
+  sink: Log,
+): Promise<Omit<Session, 'registry'> | undefined> {
+  const settings = vscode.workspace.getConfiguration('ank');
+  const configured = settings.get<string>('path', '');
+  const agent = settings.get<string>('agent', '');
 
   try {
     const located = await locate([configured, 'ank'], sink);
@@ -82,13 +123,19 @@ function environment(configured: string): Record<string, string> {
   const agent =
     configured.trim() !== ''
       ? configured.trim()
-      : `vscode/${vscode.version}@${hostname()}`;
+      : `vscode/${vscode.version}@${machine()}`;
   return { ANK_AGENT: agent };
 }
 
-function hostname(): string {
-  // `os.hostname()` would do, but the machine id VS Code already carries is
-  // stable across a rename and is not a name to leak into a shared ref.
+/**
+ * A stable name for this installation.
+ *
+ * The hostname would read better in `ank status`, and it is also a real
+ * machine name written into a ref that may be pushed to a shared remote. The
+ * editor already carries an opaque id that is stable across a rename, so that
+ * is what goes in.
+ */
+function machine(): string {
   return vscode.env.machineId.slice(0, 8);
 }
 
@@ -98,12 +145,13 @@ function reportMissingBinary(sink: Log, error: unknown): void {
   sink.error(message);
 
   const install = 'Copy install command';
+  const showLog = 'Show Log';
   void vscode.window
-    .showWarningMessage(`${message}.`, install, 'Show Log')
+    .showWarningMessage(`${message}.`, install, showLog)
     .then((chosen) => {
       if (chosen === install) {
         void vscode.env.clipboard.writeText(INSTALL_HINT);
-      } else if (chosen === 'Show Log') {
+      } else if (chosen === showLog) {
         sink.show();
       }
     });
