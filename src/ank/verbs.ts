@@ -82,9 +82,19 @@ export const WRITING_VERBS: ReadonlySet<string> = new Set([
 /**
  * The only verbs an unattended refresh may run.
  *
+ * All three are pure reads: none renews a lease and none writes. `graph` is
+ * here because blockedness is an edge and not a field -- a task waiting on
+ * another is `open` in its file, and a view that showed it as plain `open`
+ * would be true to the file and useless to the reader. The alternative was
+ * `context`, which computes readiness and renews the caller's claim doing it.
+ *
  * Anything else is reached from something a person just clicked.
  */
-export const REPAINT_VERBS: ReadonlySet<string> = new Set(['status', 'find']);
+export const REPAINT_VERBS: ReadonlySet<string> = new Set([
+  'status',
+  'find',
+  'graph',
+]);
 
 /** `done` runs the verifiers itself, which is a build and not a read. */
 const VERIFIER_TIMEOUT_MS = 15 * 60_000;

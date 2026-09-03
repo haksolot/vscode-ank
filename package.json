@@ -44,6 +44,19 @@
         "category": "ank",
         "icon": "$(refresh)",
         "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.open",
+        "title": "Open Entity",
+        "category": "ank",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.openFile",
+        "title": "Open Entity File",
+        "category": "ank",
+        "icon": "$(go-to-file)",
+        "enablement": "ank.hasCorpus"
       }
     ],
     "configuration": {

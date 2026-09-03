@@ -4,19 +4,23 @@ import { AnkCli, AnkError, Capabilities, INSTALL_HINT, locate } from './ank';
 import type { Located } from './ank';
 import { CorpusRegistry } from './corpus/registry';
 import { Log } from './log';
+import {
+  ANK_SCHEME,
+  EntityDocumentProvider,
+  entityUri,
+} from './providers/entityDocument';
+import { EntityPanel } from './providers/entityPanel';
+import type { EntityRef } from './ui/tree';
 
-/**
- * What the extension resolved at activation.
- *
- * Held so the layers built on top of it are handed one adapter rather than
- * each locating the binary again.
- */
-export interface Session {
+/** What the extension resolved at activation. */
+interface Binary {
   cli: AnkCli;
   located: Located;
   capabilities: Capabilities;
-  registry: CorpusRegistry;
 }
+
+/** The commands this build registers. The panel is told, rather than assuming. */
+const OFFERED = new Set(['ank.showLog', 'ank.refresh', 'ank.open', 'ank.openFile']);
 
 let log: Log | undefined;
 
@@ -28,21 +32,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('ank.showLog', () => log?.show()),
   );
 
-  const opened = await open(log);
-  await setContext('ank.hasBinary', opened !== undefined);
-
-  if (!opened) {
+  const binary = await open(log);
+  await setContext('ank.hasBinary', binary !== undefined);
+  if (!binary) {
     return;
   }
 
-  const { cli, located, capabilities } = opened;
   log.info(
-    `ank ${located.version} at ${located.binary}, ` +
-      `${String(capabilities.verbs.length)} verbs`,
+    `ank ${binary.located.version} at ${binary.located.binary}, ` +
+      `${String(binary.capabilities.verbs.length)} verbs`,
   );
 
-  const registry = new CorpusRegistry(cli, log);
-  context.subscriptions.push(registry);
+  const registry = new CorpusRegistry(binary.cli, log);
+  const documents = new EntityDocumentProvider(registry);
+  const panel = new EntityPanel(context.extensionUri, OFFERED);
+  context.subscriptions.push(registry, documents, panel);
+
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider(ANK_SCHEME, documents),
+  );
 
   context.subscriptions.push(
     registry.onDidChange(() => {
@@ -53,7 +61,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     vscode.commands.registerCommand('ank.refresh', async () => {
       await Promise.all(registry.corpora.map((corpus) => corpus.refresh()));
+      documents.invalidateAll();
     }),
+    vscode.commands.registerCommand('ank.open', (ref: EntityRef) =>
+      openEntity(ref, documents, panel, true),
+    ),
+    vscode.commands.registerCommand('ank.openFile', (ref: EntityRef) =>
+      openEntity(ref, documents, panel, false),
+    ),
   );
 
   await registry.start();
@@ -66,16 +81,45 @@ export function deactivate(): void {
 }
 
 /**
+ * Opens an entity: the file as a document, and what the file cannot say beside it.
+ *
+ * `show` runs once. The panel reads what it needs off the same document rather
+ * than asking again -- two calls for one click would renew the lease twice,
+ * which is harmless and still wrong for a reason worth keeping straight.
+ */
+async function openEntity(
+  ref: EntityRef | undefined,
+  documents: EntityDocumentProvider,
+  panel: EntityPanel,
+  withPanel: boolean,
+): Promise<void> {
+  if (!ref) {
+    return;
+  }
+
+  const uri = entityUri(ref.corpus.folder.uri, ref.id);
+  documents.invalidate(uri);
+
+  const document = await vscode.workspace.openTextDocument(uri);
+  await vscode.languages.setTextDocumentLanguage(document, 'markdown');
+  await vscode.window.showTextDocument(document, { preview: true });
+
+  if (withPanel) {
+    const shown = documents.peek(uri);
+    if (shown) {
+      panel.reveal(ref.corpus, ref.id, shown);
+    }
+  }
+}
+
+/**
  * The context keys the manifest gates commands and views on.
  *
- * `ank.hasClaim` is true where any open corpus reports a claim held by this
- * identity. It is a disjunction and never a count: several corpora are several
- * repositories, and a number across them would be a fiction.
+ * `ank.hasClaim` is a disjunction and never a count: several corpora are
+ * several repositories, and a number across them would be a fiction.
  */
 async function announce(registry: CorpusRegistry): Promise<void> {
-  const held = registry.corpora.some(
-    (corpus) => corpus.snapshot?.status.claim != null,
-  );
+  const held = registry.corpora.some((corpus) => corpus.snapshot?.status.claim != null);
   await setContext('ank.hasCorpus', !registry.empty);
   await setContext('ank.hasClaim', held);
 }
@@ -92,9 +136,7 @@ function setContext(key: string, value: boolean): Thenable<unknown> {
  * extension stays loaded rather than throwing out of activation -- the user
  * may install ank and reload without hunting for a setting.
  */
-async function open(
-  sink: Log,
-): Promise<Omit<Session, 'registry'> | undefined> {
+async function open(sink: Log): Promise<Binary | undefined> {
   const settings = vscode.workspace.getConfiguration('ank');
   const configured = settings.get<string>('path', '');
   const agent = settings.get<string>('agent', '');
@@ -121,9 +163,7 @@ async function open(
  */
 function environment(configured: string): Record<string, string> {
   const agent =
-    configured.trim() !== ''
-      ? configured.trim()
-      : `vscode/${vscode.version}@${machine()}`;
+    configured.trim() !== '' ? configured.trim() : `vscode/${vscode.version}@${machine()}`;
   return { ANK_AGENT: agent };
 }
 
@@ -140,19 +180,16 @@ function machine(): string {
 }
 
 function reportMissingBinary(sink: Log, error: unknown): void {
-  const message =
-    error instanceof AnkError ? error.message : 'ank could not be started';
+  const message = error instanceof AnkError ? error.message : 'ank could not be started';
   sink.error(message);
 
   const install = 'Copy install command';
   const showLog = 'Show Log';
-  void vscode.window
-    .showWarningMessage(`${message}.`, install, showLog)
-    .then((chosen) => {
-      if (chosen === install) {
-        void vscode.env.clipboard.writeText(INSTALL_HINT);
-      } else if (chosen === showLog) {
-        sink.show();
-      }
-    });
+  void vscode.window.showWarningMessage(`${message}.`, install, showLog).then((chosen) => {
+    if (chosen === install) {
+      void vscode.env.clipboard.writeText(INSTALL_HINT);
+    } else if (chosen === showLog) {
+      sink.show();
+    }
+  });
 }

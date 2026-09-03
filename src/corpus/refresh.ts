@@ -20,7 +20,12 @@
  */
 
 import type { Ank, FindOptions } from '../ank';
-import type { FindDocument, FindResult, StatusDocument } from '../ank';
+import type {
+  FindDocument,
+  FindResult,
+  GraphDocument,
+  StatusDocument,
+} from '../ank';
 
 /**
  * The only reads an unattended refresh may make.
@@ -31,20 +36,30 @@ import type { FindDocument, FindResult, StatusDocument } from '../ank';
 export interface RepaintReader {
   status(): Promise<StatusDocument>;
   find(query?: string, options?: FindOptions): Promise<FindDocument>;
+  graph(path?: string): Promise<GraphDocument>;
 }
 
-/** Narrows a full adapter to the two verbs a repaint may use. */
+/** Narrows a full adapter to the three verbs a repaint may use. */
 export function repaintReader(ank: Ank): RepaintReader {
   return {
     status: () => ank.status(),
     find: (query, options) => ank.find(query, options),
+    graph: (path) => ank.graph(path),
   };
+}
+
+/** A task, with what the graph says about whether it can be taken. */
+export interface ReadyTask extends FindResult {
+  /** Every blocker that has not finished. Empty means takeable. */
+  blockedBy: string[];
+  /** How many other tasks finishing this one would unblock. The sort key. */
+  unblocks: number;
 }
 
 /** What one repaint learned, and when. */
 export interface Snapshot {
   status: StatusDocument;
-  tasks: FindResult[];
+  tasks: ReadyTask[];
   decisions: FindResult[];
   at: number;
 }
@@ -64,19 +79,70 @@ export async function repaint(
   reader: RepaintReader,
   now: () => number = Date.now,
 ): Promise<Snapshot> {
-  const [status, tasks, adr, specs] = await Promise.all([
+  const [status, tasks, adr, specs, graph] = await Promise.all([
     reader.status(),
     reader.find(undefined, { type: 'task' }),
     reader.find(undefined, { type: 'adr' }),
     reader.find(undefined, { type: 'spec' }),
+    reader.graph(),
   ]);
 
   return {
     status,
-    tasks: tasks.results,
+    tasks: order(tasks.results, graph),
     decisions: [...adr.results, ...specs.results],
     at: now(),
   };
+}
+
+/** A status that means the task no longer blocks anything. */
+const FINISHED = new Set(['done', 'closed']);
+
+/**
+ * Folds the DAG into the listing, and orders it the way ank orders it.
+ *
+ * Ready first, then by how many other tasks each would unblock. That ordering
+ * is not decoration: it is the answer to "what should I take", and taking it
+ * from the graph rather than inventing one keeps this view saying what
+ * `ank context` would say.
+ *
+ * Blockedness is derived from the edges rather than read from a field, because
+ * no entity is stored carrying it. A blocker that is done no longer blocks;
+ * one that names an entity the graph does not carry is treated as blocking,
+ * since a dangling edge is a reason to look rather than a reason to proceed.
+ */
+function order(tasks: readonly FindResult[], graph: GraphDocument): ReadyTask[] {
+  const statusOf = new Map(graph.tasks.map((task) => [task.id, task.status]));
+
+  const blockers = new Map<string, string[]>();
+  const unblocks = new Map<string, number>();
+
+  for (const edge of graph.edges) {
+    const blocking = statusOf.get(edge.blocked_by);
+    if (blocking !== undefined && FINISHED.has(blocking)) {
+      continue;
+    }
+    blockers.set(edge.task, [...(blockers.get(edge.task) ?? []), edge.blocked_by]);
+    unblocks.set(edge.blocked_by, (unblocks.get(edge.blocked_by) ?? 0) + 1);
+  }
+
+  const enriched: ReadyTask[] = tasks.map((task) => ({
+    ...task,
+    blockedBy: blockers.get(task.id) ?? [],
+    unblocks: unblocks.get(task.id) ?? 0,
+  }));
+
+  return enriched.sort((left, right) => {
+    const leftReady = left.blockedBy.length === 0 ? 0 : 1;
+    const rightReady = right.blockedBy.length === 0 ? 0 : 1;
+    if (leftReady !== rightReady) {
+      return leftReady - rightReady;
+    }
+    if (left.unblocks !== right.unblocks) {
+      return right.unblocks - left.unblocks;
+    }
+    return left.created.localeCompare(right.created);
+  });
 }
 
 /**

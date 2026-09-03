@@ -163,8 +163,11 @@ test('the renewing set is exactly what the contract says renews a lease', () => 
   );
 });
 
-test('the repaint set is status and find, and nothing else', () => {
-  assert.deepEqual([...REPAINT_VERBS].sort(), ['find', 'status']);
+test('the repaint set is the three pure reads a listing needs', () => {
+  // `graph` is in it because blockedness is an edge and not a field: a task
+  // waiting on another is `open` in its file. The alternative was `context`,
+  // which computes readiness and renews the caller's claim doing it.
+  assert.deepEqual([...REPAINT_VERBS].sort(), ['find', 'graph', 'status']);
 });
 
 test('no verb is both safe to repaint with and known to renew or write', () => {

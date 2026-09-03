@@ -10,9 +10,9 @@ scope:
   - src/corpus/**
   - src/ui/**
 constraint: |
-  Any refresh the user did not ask for runs only ank status and ank find. context, show, read, amend, attest, edit, check and review are reached from an explicit user action and from no timer, watcher or event handler.
+  No refresh the user did not ask for may run a verb that renews a lease or writes: context, show, read, amend, attest, edit, check and review are reached from an explicit user action and from no timer. A corpus repaint runs status, find and graph. A view answering the user's own navigation may additionally run scope. None of those four renews a lease or writes.
 schema: 4
-version: 1
+version: 3
 ---
 
 Two separate hazards make this one rule.
