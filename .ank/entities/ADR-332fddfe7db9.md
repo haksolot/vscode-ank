@@ -9,9 +9,9 @@ status: proposed
 scope:
   - src/**
 constraint: |
-  No code path under src/ reads, parses, writes or watches a file inside .ank/. Every fact about the corpus is obtained by executing the ank binary with --json, and every change to it is made by executing a verb.
+  No code path under src/ reads, parses or writes a file inside .ank/. Every fact about the corpus is obtained by executing the ank binary with --json, and every change to it is made by executing a verb. Observing that files under .ank/ changed is permitted; reading what changed is not.
 schema: 4
-version: 1
+version: 2
 ---
 
 A task's state is not in its file. It is the file, plus `refs/ank/claims/<id>`,

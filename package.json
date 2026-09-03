@@ -38,7 +38,24 @@
         "title": "Show Log",
         "category": "ank"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "ank",
+      "properties": {
+        "ank.path": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path to the `ank` executable. Empty means the one on your `PATH`. Install it with `npm install -g @haksolot/ank`.",
+          "scope": "machine-overridable"
+        },
+        "ank.agent": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "The identity this window writes claims under, as `$ANK_AGENT`. Empty derives one from the editor. Two windows on one working tree sharing an identity are **one agent** to the claim refs: they share a claim instead of arbitrating over it, and the second is quietly refused work it should have been given.",
+          "scope": "machine-overridable"
+        }
+      }
+    }
   },
   "scripts": {
     "compile": "npm run check-types && node esbuild.mjs",

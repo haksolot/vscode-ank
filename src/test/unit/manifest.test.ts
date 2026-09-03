@@ -9,7 +9,12 @@ interface Manifest {
   engines: { vscode: string };
   main: string;
   activationEvents: string[];
-  contributes?: { commands?: { command: string; title: string }[] };
+  contributes?: {
+    commands?: { command: string; title: string }[];
+    configuration?: {
+      properties?: Record<string, { description?: string; markdownDescription?: string }>;
+    };
+  };
 }
 
 const manifest = JSON.parse(
@@ -59,5 +64,29 @@ test('every contributed command is namespaced and titled', () => {
   for (const { command, title } of manifest.contributes?.commands ?? []) {
     assert.ok(command.startsWith('ank.'), `${command} is not under the ank. prefix`);
     assert.ok(title.length > 0, `${command} has no title`);
+  }
+});
+
+test('every contributed setting is read somewhere', () => {
+  // A setting nothing reads is a promise the settings UI makes and the code
+  // does not keep.
+  const properties = manifest.contributes?.configuration?.properties ?? {};
+  for (const key of Object.keys(properties)) {
+    const name = key.replace(/^ank\./, '');
+    assert.ok(
+      sources.includes(`'${name}'`) || sources.includes(`"${name}"`),
+      `${key} is contributed but never read`,
+    );
+  }
+});
+
+test('every contributed setting is namespaced and described', () => {
+  const properties = manifest.contributes?.configuration?.properties ?? {};
+  assert.ok(Object.keys(properties).length > 0);
+
+  for (const [key, property] of Object.entries(properties)) {
+    assert.ok(key.startsWith('ank.'), `${key} is not under the ank. prefix`);
+    const described = property.description ?? property.markdownDescription ?? '';
+    assert.ok(described.length > 0, `${key} has no description`);
   }
 });
