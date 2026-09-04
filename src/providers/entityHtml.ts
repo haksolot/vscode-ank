@@ -119,7 +119,7 @@ function actions(document: ShowDocument, offered: ReadonlySet<string>): string {
       wanted.push(['ank.claim', 'Claim']);
     }
   }
-  wanted.push(['ank.openFile', 'Open entity']);
+  wanted.push(['ank.openFile', 'Open the file']);
 
   const buttons = wanted
     .filter(([command]) => offered.has(command))

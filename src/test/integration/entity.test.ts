@@ -69,6 +69,37 @@ suite('the entity document', () => {
     assert.equal(document.getText(), shown.content);
   });
 
+  test('opening an entity opens the panel and no editor beside it', async () => {
+    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+
+    const found = ank<{ results: { id: string }[] }>(['find', '--type', 'task']);
+    const first = found.results[0];
+    assert.ok(first);
+
+    const before = vscode.window.visibleTextEditors.length;
+    await vscode.commands.executeCommand('ank.open', entityUri(folder().uri, first.id));
+
+    // Two tabs for one click is what this test exists to prevent. The panel is
+    // a webview and not a text editor, so the count must not move.
+    assert.equal(vscode.window.visibleTextEditors.length, before);
+  });
+
+  test('the panel button opens the file, and that one is an editor', async () => {
+    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+
+    const found = ank<{ results: { id: string }[] }>(['find', '--type', 'adr']);
+    const first = found.results[0];
+    assert.ok(first);
+
+    const uri = entityUri(folder().uri, first.id);
+    await vscode.commands.executeCommand('ank.openFile', uri);
+
+    const opened = vscode.window.visibleTextEditors.filter(
+      (editor) => editor.document.uri.toString() === uri.toString(),
+    );
+    assert.equal(opened.length, 1);
+  });
+
   test('has nowhere to be saved, so nothing reaches the corpus through it', async () => {
     const found = ank<{ results: { id: string }[] }>(['find', '--type', 'adr']);
     const first = found.results[0];

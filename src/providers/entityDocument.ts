@@ -72,12 +72,44 @@ export class EntityDocumentProvider
   constructor(private readonly registry: CorpusRegistry) {}
 
   /**
+   * Runs `show` and holds the answer.
+   *
+   * `show` renews the claim where the id names the task the caller holds, so
+   * every fetch is a renewal and the number of them is worth controlling. One
+   * per click is right -- somebody asked. One per click per surface is not,
+   * which is why the panel and the text provider share this and neither calls
+   * the verb itself.
+   *
+   * Throws `AnkError` on a refusal, so a caller can report it as the fact
+   * about the corpus that it is.
+   */
+  async fetch(corpus: Corpus, id: string, fresh = false): Promise<ShowDocument> {
+    const key = entityUri(corpus.folder.uri, id).toString();
+
+    if (!fresh) {
+      const held = this.cache.get(key);
+      if (held) {
+        return held;
+      }
+    }
+
+    try {
+      const document = await corpus.ank.show(id);
+      this.cache.set(key, document);
+      return document;
+    } catch (error) {
+      this.cache.delete(key);
+      throw error;
+    }
+  }
+
+  /**
    * The entity file, byte for byte.
    *
-   * This runs `show`, which renews the claim where the id is the task the
-   * caller holds. That is correct: opening an entity is something a person
-   * just did. It is also why nothing repaints through here -- the provider is
-   * asked only when a document is opened or explicitly refreshed.
+   * Served out of what `fetch` already holds where there is something to
+   * serve, so opening the file after reading the panel costs no second `show`.
+   * The provider is asked only when a document is opened or explicitly
+   * refreshed; nothing repaints through here.
    */
   async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
     const addressed = entityOf(uri, this.registry);
@@ -86,23 +118,14 @@ export class EntityDocumentProvider
     }
 
     try {
-      const document = await addressed.corpus.ank.show(addressed.id);
-      this.cache.set(uri.toString(), document);
+      const document = await this.fetch(addressed.corpus, addressed.id);
       return document.content;
     } catch (error) {
-      this.cache.delete(uri.toString());
       return refusal(addressed.id, error);
     }
   }
 
-  /**
-   * The last document fetched for a URI.
-   *
-   * The detail panel needs what the file does not carry -- `coordination` from
-   * a git ref, the log and machinery from separate entities, the edges -- and
-   * would otherwise run `show` a second time, renewing a lease twice for one
-   * click.
-   */
+  /** The document held for a URI, without fetching one. */
   peek(uri: vscode.Uri): ShowDocument | undefined {
     return this.cache.get(uri.toString());
   }

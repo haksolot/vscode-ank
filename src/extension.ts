@@ -10,6 +10,7 @@ import { AnkMcpProvider, declare, MCP_PROVIDER_ID } from './mcp/provider';
 import {
   ANK_SCHEME,
   EntityDocumentProvider,
+  entityOf,
   entityUri,
 } from './providers/entityDocument';
 import { Findings } from './providers/diagnostics';
@@ -102,11 +103,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await Promise.all(registry.corpora.map((corpus) => corpus.refresh()));
       documents.invalidateAll();
     }),
-    vscode.commands.registerCommand('ank.open', (ref: EntityRef) =>
-      openEntity(ref, documents, panel, true),
+    vscode.commands.registerCommand('ank.open', (given: EntityRef | vscode.Uri) =>
+      openEntity(given, registry, documents, panel, log as Log),
     ),
-    vscode.commands.registerCommand('ank.openFile', (ref: EntityRef) =>
-      openEntity(ref, documents, panel, false),
+    vscode.commands.registerCommand('ank.openFile', (given: EntityRef | vscode.Uri) =>
+      openFile(given, registry, documents, log as Log),
     ),
     vscode.commands.registerCommand('ank.status', () => showStatus(registry)),
   );
@@ -120,9 +121,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     reveal: async (corpus, id) => {
       await openEntity(
         { corpus, id, kind: 'task', title: id },
+        registry,
         documents,
         panel,
-        true,
+        log as Log,
       );
     },
     onFindings: (corpus, checked) => findings.report(corpus, checked),
@@ -172,35 +174,113 @@ export function deactivate(): void {
 }
 
 /**
- * Opens an entity: the file as a document, and what the file cannot say beside it.
+ * Opens an entity: the panel, and no editor beside it.
  *
- * `show` runs once. The panel reads what it needs off the same document rather
- * than asking again -- two calls for one click would renew the lease twice,
- * which is harmless and still wrong for a reason worth keeping straight.
+ * The panel is the whole entity -- the file's own body, and the things the
+ * file cannot carry: who holds it, what it waits on, what it unblocks, its log
+ * split from the machinery. The raw frontmatter is the occasional thing rather
+ * than the default one, and the panel carries a button for it.
+ *
+ * Focus is left where it was, so arrowing down a tree repaints the panel
+ * instead of stealing the keyboard on every row.
  */
 async function openEntity(
-  ref: EntityRef | undefined,
+  given: EntityRef | vscode.Uri | undefined,
+  registry: CorpusRegistry,
   documents: EntityDocumentProvider,
   panel: EntityPanel,
-  withPanel: boolean,
+  log: Log,
 ): Promise<void> {
+  const ref = addressed(given, registry);
   if (!ref) {
     return;
   }
 
-  const uri = entityUri(ref.corpus.folder.uri, ref.id);
-  documents.invalidate(uri);
+  try {
+    // Fresh: clicking a row is an explicit read, and the corpus may have moved
+    // since the last one.
+    const shown = await documents.fetch(ref.corpus, ref.id, true);
+    panel.reveal(ref.corpus, ref.id, shown);
+  } catch (error) {
+    reportRefusal(log, ref.id, error);
+  }
+}
 
+/**
+ * Opens the entity file itself, on the read-only `ank:` scheme.
+ *
+ * Reached from the panel's own button and from the inline action on a tree
+ * row. It serves what `fetch` already holds, so it costs no second `show`.
+ */
+async function openFile(
+  given: EntityRef | vscode.Uri | undefined,
+  registry: CorpusRegistry,
+  documents: EntityDocumentProvider,
+  log: Log,
+): Promise<void> {
+  const ref = addressed(given, registry);
+  if (!ref) {
+    return;
+  }
+
+  try {
+    await documents.fetch(ref.corpus, ref.id);
+  } catch (error) {
+    reportRefusal(log, ref.id, error);
+    return;
+  }
+
+  const uri = entityUri(ref.corpus.folder.uri, ref.id);
   const document = await vscode.workspace.openTextDocument(uri);
   await vscode.languages.setTextDocumentLanguage(document, 'markdown');
   await vscode.window.showTextDocument(document, { preview: true });
+}
 
-  if (withPanel) {
-    const shown = documents.peek(uri);
-    if (shown) {
-      panel.reveal(ref.corpus, ref.id, shown);
-    }
+/**
+ * What a command was pointed at.
+ *
+ * A tree row and the detail panel both hand over an `EntityRef`. An `ank:` uri
+ * is accepted too, which is what a link in a rendered entity carries and what
+ * a test can invoke with -- the scheme already names a corpus and an id, so
+ * there is nothing to look up beyond which open corpus it belongs to.
+ */
+function addressed(
+  given: EntityRef | vscode.Uri | undefined,
+  registry: CorpusRegistry,
+): EntityRef | undefined {
+  if (!given) {
+    return undefined;
   }
+
+  if (given instanceof vscode.Uri) {
+    const found = entityOf(given, registry);
+    return found
+      ? { corpus: found.corpus, id: found.id, kind: 'task', title: found.id }
+      : undefined;
+  }
+
+  return given;
+}
+
+/** A refusal is a fact about the corpus, and it names what to run next. */
+function reportRefusal(log: Log, id: string, error: unknown): void {
+  if (!(error instanceof AnkError)) {
+    log.error(`${id}: ${String(error)}`);
+    void vscode.window.showErrorMessage(`${id} could not be read: ${String(error)}`);
+    return;
+  }
+
+  log.warn(`${id}: error[${String(error.code)}] ${error.message}`);
+
+  const copy = 'Copy next command';
+  const buttons = error.hint === null ? [] : [copy];
+  void vscode.window
+    .showErrorMessage(`${error.message} (${error.sense})`, ...buttons)
+    .then((chosen) => {
+      if (chosen === copy && error.hint !== null) {
+        void vscode.env.clipboard.writeText(error.hint);
+      }
+    });
 }
 
 /**
