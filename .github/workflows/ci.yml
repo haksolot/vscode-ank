@@ -19,6 +19,16 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+
+      # The unit suite locates the real binary and reads its version, which is
+      # the only thing that catches a platform where we cannot spawn it at all
+      # -- on Windows the name on the PATH is a `.cmd` shim, and node refuses
+      # to spawn one without a shell. Pinned, because the golden fixtures are
+      # what detect drift in the contract; a floating install would turn an
+      # upstream release into a red build here with nothing to say about it.
+      - run: npm install --global @haksolot/ank@0.7.0
+      - run: ank --version
+
       - run: npm run lint
       - run: npm run compile
       - run: npm test
