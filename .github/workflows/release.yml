@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+# One `.vsix` is built once and then goes three places: the GitHub release, the
+# VS Code Marketplace and Open VSX. Publishing that exact file rather than
+# repackaging per registry is what makes the bytes a user installs from a fork
+# the same bytes that were tested here.
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -18,6 +22,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+
+      # The unit suite locates the real binary and reads its version, exactly
+      # as CI does. Pinned for the same reason: the golden fixtures are what
+      # detect contract drift, and a floating install would turn an upstream
+      # release into a red build with nothing to say about it.
+      - run: npm install --global @haksolot/ank@0.7.0
+
       - run: npm run lint
       - run: npm run compile
       - run: npm test
@@ -37,15 +48,45 @@ jobs:
           npm run icon
           git diff --exit-code -- resources/icon.png
 
-      - run: npx vsce package --out "ank-${GITHUB_REF_NAME}.vsix"
+      - name: Package
+        run: npx vsce package --out "ank-${GITHUB_REF_NAME}.vsix"
 
       - uses: actions/upload-artifact@v4
         with:
           name: vsix
           path: '*.vsix'
 
+      # The release is created before either registry is touched. A token that
+      # has expired then costs a re-run of a publish step, not the build.
       - name: Attach it to the release
         if: startsWith(github.ref, 'refs/tags/v')
         run: gh release create "$GITHUB_REF_NAME" --generate-notes ./*.vsix
         env:
           GH_TOKEN: ${{ github.token }}
+
+      # `vsce` reads VSCE_PAT from the environment. An absent secret arrives as
+      # an empty string and produces an authentication error several steps
+      # later, so it is named here instead.
+      - name: Publish to the VS Code Marketplace
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          if [ -z "${VSCE_PAT}" ]; then
+            echo "VSCE_PAT is not set: see docs/releasing.md" >&2
+            exit 1
+          fi
+          npx vsce publish --packagePath ./*.vsix
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      # Open VSX is where Cursor, Windsurf, VSCodium and the Eclipse clients
+      # look. The namespace is created once by hand; see docs/releasing.md.
+      - name: Publish to Open VSX
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          if [ -z "${OVSX_PAT}" ]; then
+            echo "OVSX_PAT is not set: see docs/releasing.md" >&2
+            exit 1
+          fi
+          npx --yes ovsx@0.10.6 publish ./*.vsix --pat "${OVSX_PAT}"
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}

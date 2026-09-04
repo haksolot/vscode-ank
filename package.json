@@ -622,7 +622,8 @@
     "test:integration": "npm run compile && npm run compile:test && vscode-test",
     "package": "npm run compile && vsce package",
     "vscode:prepublish": "npm run compile -- --production",
-    "icon": "node scripts/icon.mjs"
+    "icon": "node scripts/icon.mjs",
+    "lockfile": "node scripts/lockfile.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
