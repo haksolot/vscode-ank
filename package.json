@@ -1,0 +1,645 @@
+{
+  "name": "ank",
+  "displayName": "ank",
+  "description": "Tasks and architecture decisions from your repository, in the editor. A client for the ank CLI.",
+  "version": "0.1.0",
+  "publisher": "haksolot",
+  "license": "Apache-2.0",
+  "author": "Sean Lamet",
+  "homepage": "https://github.com/haksolot/vscode-ank",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/haksolot/vscode-ank.git"
+  },
+  "bugs": {
+    "url": "https://github.com/haksolot/vscode-ank/issues"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "ank",
+    "adr",
+    "architecture decision record",
+    "tasks",
+    "agents"
+  ],
+  "engines": {
+    "vscode": "^1.104.0"
+  },
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "workspaceContains:.ank/config.yml"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "ank.showLog",
+        "title": "Show Log",
+        "category": "ank"
+      },
+      {
+        "command": "ank.refresh",
+        "title": "Refresh",
+        "category": "ank",
+        "icon": "$(refresh)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.open",
+        "title": "Open Entity",
+        "category": "ank",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.openFile",
+        "title": "Open Entity File",
+        "category": "ank",
+        "icon": "$(go-to-file)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.status",
+        "title": "Status",
+        "category": "ank",
+        "icon": "$(info)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.context",
+        "title": "Context",
+        "category": "ank",
+        "icon": "$(compass)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.claim",
+        "title": "Claim Task",
+        "category": "ank",
+        "icon": "$(circle-outline)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.show",
+        "title": "Show Entity",
+        "category": "ank",
+        "icon": "$(book)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.log",
+        "title": "Log Against Task",
+        "category": "ank",
+        "icon": "$(pencil)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.readLog",
+        "title": "Read Log",
+        "category": "ank",
+        "icon": "$(history)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.done",
+        "title": "Finish Task",
+        "category": "ank",
+        "icon": "$(pass)",
+        "enablement": "ank.hasClaim"
+      },
+      {
+        "command": "ank.release",
+        "title": "Release Task",
+        "category": "ank",
+        "icon": "$(debug-disconnect)",
+        "enablement": "ank.hasClaim"
+      },
+      {
+        "command": "ank.new.task",
+        "title": "New Task",
+        "category": "ank",
+        "icon": "$(add)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.new.adr",
+        "title": "New Decision",
+        "category": "ank",
+        "icon": "$(law)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.new.spec",
+        "title": "New Specification",
+        "category": "ank",
+        "icon": "$(book)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.amend",
+        "title": "Amend Entity",
+        "category": "ank",
+        "icon": "$(edit)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.read",
+        "title": "Record a Reading",
+        "category": "ank",
+        "icon": "$(eye)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.close",
+        "title": "Close Task",
+        "category": "ank",
+        "icon": "$(circle-slash)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.attest",
+        "title": "Attest a Proof",
+        "category": "ank",
+        "icon": "$(verified)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.review",
+        "title": "Review",
+        "category": "ank",
+        "icon": "$(checklist)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.accept",
+        "title": "Ratify a Decision…",
+        "category": "ank",
+        "icon": "$(key)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.find",
+        "title": "Find",
+        "category": "ank",
+        "icon": "$(search)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.scope",
+        "title": "What Binds This File",
+        "category": "ank",
+        "icon": "$(law)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.graph",
+        "title": "Graph",
+        "category": "ank",
+        "icon": "$(type-hierarchy)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.tui",
+        "title": "Open the TUI",
+        "category": "ank",
+        "icon": "$(terminal)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.check",
+        "title": "Check",
+        "category": "ank",
+        "icon": "$(shield)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.edit",
+        "title": "Edit Entity",
+        "category": "ank",
+        "icon": "$(edit)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.migrate",
+        "title": "Migrate",
+        "category": "ank",
+        "icon": "$(arrow-swap)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.config",
+        "title": "Config",
+        "category": "ank",
+        "icon": "$(gear)",
+        "enablement": "ank.hasCorpus"
+      },
+      {
+        "command": "ank.init",
+        "title": "Create a Corpus",
+        "category": "ank",
+        "icon": "$(repo-create)",
+        "enablement": "ank.hasBinary"
+      },
+      {
+        "command": "ank.installHint",
+        "title": "Copy the Install Command",
+        "category": "ank",
+        "icon": "$(clippy)"
+      },
+      {
+        "command": "ank.declareCorpus",
+        "title": "Declare a Corpus for MCP",
+        "category": "ank",
+        "icon": "$(server)",
+        "enablement": "ank.hasCorpus"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ank",
+          "title": "ank",
+          "icon": "resources/ank.svg"
+        }
+      ]
+    },
+    "views": {
+      "ank": [
+        {
+          "id": "ank.tasks",
+          "name": "Tasks",
+          "icon": "resources/ank.svg"
+        },
+        {
+          "id": "ank.binds",
+          "name": "Binds This File",
+          "icon": "resources/ank.svg"
+        },
+        {
+          "id": "ank.decisions",
+          "name": "Decisions",
+          "icon": "resources/ank.svg",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "ank.graph",
+          "name": "Graph",
+          "icon": "resources/ank.svg",
+          "visibility": "collapsed"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "ank.tasks",
+        "contents": "No corpus in this workspace.\n\nank keeps tasks and architecture decisions in the repository, attached to the code they constrain.\n[Read about ank](https://github.com/haksolot/ank)",
+        "when": "!ank.hasCorpus && ank.hasBinary"
+      },
+      {
+        "view": "ank.tasks",
+        "contents": "The ank executable was not found.\n\n$(terminal) npm install -g @haksolot/ank\n\nOr set the path to it in your settings.\n[Open Settings](command:workbench.action.openSettings?%22ank.path%22)",
+        "when": "!ank.hasBinary"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "ank.refresh",
+          "when": "view =~ /^ank./",
+          "group": "navigation@9"
+        },
+        {
+          "command": "ank.new.task",
+          "when": "view == ank.tasks",
+          "group": "navigation@1"
+        },
+        {
+          "command": "ank.new.adr",
+          "when": "view == ank.decisions",
+          "group": "navigation@1"
+        },
+        {
+          "command": "ank.check",
+          "when": "view == ank.tasks",
+          "group": "1_corpus@1"
+        },
+        {
+          "command": "ank.review",
+          "when": "view == ank.decisions",
+          "group": "1_corpus@1"
+        },
+        {
+          "command": "ank.context",
+          "when": "view == ank.tasks",
+          "group": "1_corpus@2"
+        },
+        {
+          "command": "ank.tui",
+          "when": "view == ank.tasks",
+          "group": "1_corpus@3"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "ank.openFile",
+          "when": "viewItem =~ /^ank.(task|adr|spec)/",
+          "group": "inline"
+        },
+        {
+          "command": "ank.claim",
+          "when": "viewItem == ank.task.ready",
+          "group": "1_loop@1"
+        },
+        {
+          "command": "ank.log",
+          "when": "viewItem == ank.task.held",
+          "group": "1_loop@1"
+        },
+        {
+          "command": "ank.done",
+          "when": "viewItem == ank.task.held",
+          "group": "1_loop@2"
+        },
+        {
+          "command": "ank.release",
+          "when": "viewItem == ank.task.held",
+          "group": "1_loop@3"
+        },
+        {
+          "command": "ank.readLog",
+          "when": "viewItem =~ /^ank.task/",
+          "group": "2_read@1"
+        },
+        {
+          "command": "ank.amend",
+          "when": "viewItem =~ /^ank.(task|adr|spec)/",
+          "group": "3_shape@1"
+        },
+        {
+          "command": "ank.edit",
+          "when": "viewItem =~ /^ank.(task|adr|spec)/",
+          "group": "3_shape@2"
+        },
+        {
+          "command": "ank.close",
+          "when": "viewItem =~ /^ank.task.(ready|blocked)/",
+          "group": "3_shape@3"
+        },
+        {
+          "command": "ank.read",
+          "when": "viewItem =~ /^ank.(adr|spec)/",
+          "group": "2_read@2"
+        },
+        {
+          "command": "ank.accept",
+          "when": "viewItem =~ /^ank.(adr|spec).proposed/",
+          "group": "4_ratify@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "ank.open",
+          "when": "false"
+        },
+        {
+          "command": "ank.openFile",
+          "when": "false"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "ank.scope",
+          "when": "ank.hasCorpus && !explorerResourceIsFolder",
+          "group": "ank@1"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "ank.scope",
+          "when": "ank.hasCorpus",
+          "group": "ank@1"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "ank",
+      "properties": {
+        "ank.path": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path to the `ank` executable. Empty means the one on your `PATH`. Install it with `npm install -g @haksolot/ank`.",
+          "scope": "machine-overridable"
+        },
+        "ank.agent": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "The identity this window writes claims under, as `$ANK_AGENT`. Empty derives one from the editor. Two windows on one working tree sharing an identity are **one agent** to the claim refs: they share a claim instead of arbitrating over it, and the second is quietly refused work it should have been given.",
+          "scope": "machine-overridable"
+        },
+        "ank.check.onSave": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Run `ank check` when a file in a corpus is saved. Off by default, and worth leaving off: `check` prunes the stale claim refs it finds, so it writes, and it walks git history to say where a dead scope went. It is the verb a person runs deliberately."
+        }
+      }
+    },
+    "languageModelTools": [
+      {
+        "name": "ank_context",
+        "toolReferenceName": "ankContext",
+        "displayName": "ank context",
+        "userDescription": "Read the corpus with ank context.",
+        "modelDescription": "what binds this perimeter and what is claimable; with a claim held, the criterion and the constraints in full",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(law)",
+        "tags": [
+          "ank"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "A path to narrow the perimeter to. Omit for the whole corpus."
+            },
+            "corpus": {
+              "type": "string",
+              "description": "The repository identity of the corpus to read: the root commit, which ank status prints under \"corpus\". Never a path. Omit it where only one corpus is open."
+            }
+          }
+        }
+      },
+      {
+        "name": "ank_find",
+        "toolReferenceName": "ankFind",
+        "displayName": "ank find",
+        "userDescription": "Read the corpus with ank find.",
+        "modelDescription": "searches titles, scopes and criteria; --type spec reaches the specification, --status open lists what remains",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(law)",
+        "tags": [
+          "ank"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Words to search titles, scopes and criteria for. Omit to list everything a filter allows."
+            },
+            "type": {
+              "type": "string",
+              "description": "One kind: task, adr, spec or log."
+            },
+            "status": {
+              "type": "string",
+              "description": "One status: open, in_progress, done, closed, proposed or accepted."
+            },
+            "corpus": {
+              "type": "string",
+              "description": "The repository identity of the corpus to read: the root commit, which ank status prints under \"corpus\". Never a path. Omit it where only one corpus is open."
+            }
+          }
+        }
+      },
+      {
+        "name": "ank_show",
+        "toolReferenceName": "ankShow",
+        "displayName": "ank show",
+        "userDescription": "Read the corpus with ank show.",
+        "modelDescription": "the entity whole, frontmatter and body, byte for byte",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(law)",
+        "tags": [
+          "ank"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "The entity id, or a prefix of it long enough to be unambiguous."
+            },
+            "corpus": {
+              "type": "string",
+              "description": "The repository identity of the corpus to read: the root commit, which ank status prints under \"corpus\". Never a path. Omit it where only one corpus is open."
+            }
+          },
+          "required": [
+            "id"
+          ]
+        }
+      },
+      {
+        "name": "ank_scope",
+        "toolReferenceName": "ankScope",
+        "displayName": "ank scope",
+        "userDescription": "Read the corpus with ank scope.",
+        "modelDescription": "what covers a path: the constraints that bind it, the specifications that govern it, and the tasks that touch it",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(law)",
+        "tags": [
+          "ank"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "The path to ask about, relative to the repository root."
+            },
+            "corpus": {
+              "type": "string",
+              "description": "The repository identity of the corpus to read: the root commit, which ank status prints under \"corpus\". Never a path. Omit it where only one corpus is open."
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      },
+      {
+        "name": "ank_status",
+        "toolReferenceName": "ankStatus",
+        "displayName": "ank status",
+        "userDescription": "Read the corpus with ank status.",
+        "modelDescription": "where am I: branch, claim, perimeter, queue, findings",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(law)",
+        "tags": [
+          "ank"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "corpus": {
+              "type": "string",
+              "description": "The repository identity of the corpus to read: the root commit, which ank status prints under \"corpus\". Never a path. Omit it where only one corpus is open."
+            }
+          }
+        }
+      },
+      {
+        "name": "ank_graph",
+        "toolReferenceName": "ankGraph",
+        "displayName": "ank graph",
+        "userDescription": "Read the corpus with ank graph.",
+        "modelDescription": "the blocked_by DAG in readable text, indented under what blocks it",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(law)",
+        "tags": [
+          "ank"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "A path to narrow the graph to."
+            },
+            "corpus": {
+              "type": "string",
+              "description": "The repository identity of the corpus to read: the root commit, which ank status prints under \"corpus\". Never a path. Omit it where only one corpus is open."
+            }
+          }
+        }
+      }
+    ],
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "ank",
+        "label": "ank"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "npm run check-types && node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "check-types": "tsc --noEmit",
+    "compile:test": "tsc --project tsconfig.test.json",
+    "lint": "eslint src",
+    "test": "npm run compile:test && node --test \"out/test/unit/**/*.test.js\"",
+    "test:integration": "npm run compile && npm run compile:test && vscode-test",
+    "package": "npm run compile && vsce package",
+    "vscode:prepublish": "npm run compile -- --production",
+    "icon": "node scripts/icon.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^24.10.1",
+    "@types/vscode": "^1.104.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.7.0",
+    "esbuild": "^0.25.12",
+    "eslint": "^9.39.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.47.0"
+  },
+  "icon": "resources/icon.png",
+  "galleryBanner": {
+    "color": "#14171f",
+    "theme": "dark"
+  }
+}
