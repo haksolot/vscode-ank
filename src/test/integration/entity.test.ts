@@ -44,15 +44,29 @@ function ank<T>(args: readonly string[]): T {
   return JSON.parse(stdout) as T;
 }
 
-/** The markdown previews open right now, whatever they are pointed at. */
-function markdownPreviews(): readonly vscode.Tab[] {
+/**
+ * The webview tabs of one kind open right now.
+ *
+ * A view type arrives prefixed by the host -- `mainThreadWebview-` in front of
+ * what the panel was created with -- so this matches on the end of it rather
+ * than on the whole.
+ */
+function webviews(kind: string): readonly vscode.Tab[] {
   return vscode.window.tabGroups.all
     .flatMap((group) => group.tabs)
     .filter(
-      (tab) =>
-        tab.input instanceof vscode.TabInputWebview &&
-        tab.input.viewType.includes('markdown.preview'),
+      (tab) => tab.input instanceof vscode.TabInputWebview && tab.input.viewType.endsWith(kind),
     );
+}
+
+/** The markdown previews open right now, whatever they are pointed at. */
+function markdownPreviews(): readonly vscode.Tab[] {
+  return webviews('markdown.preview');
+}
+
+/** The detail panel, which is a webview of ours and not a preview. */
+function panels(): readonly vscode.Tab[] {
+  return webviews('ank.entity');
 }
 
 /**
@@ -127,6 +141,30 @@ suite('the entity document', () => {
     const previews = await settled(markdownPreviews);
     assert.equal(previews.length, 1, 'exactly one markdown preview');
     assert.match(previews[0]?.label ?? '', new RegExp(first.id));
+  });
+
+  test('the panel and the preview are two different answers', async () => {
+    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+
+    const found = ank<{ results: { id: string }[] }>(['find', '--type', 'task']);
+    const first = found.results[0];
+    assert.ok(first);
+    const uri = entityUri(folder().uri, first.id);
+
+    // `show` is the ank view of an entity: the claim, the edges, the proofs
+    // and the log, with the buttons that act on it. It is where a verb leaves
+    // a reader once it has changed something.
+    await vscode.commands.executeCommand('ank.show', uri);
+    assert.equal((await settled(panels)).length, 1, 'ank.show opens the panel');
+    assert.equal(markdownPreviews().length, 0, 'ank.show opens no preview');
+
+    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+
+    // `open` is a reading. Every surface that reads goes through it: a tree
+    // row, a chosen search result, a chosen log entry.
+    await vscode.commands.executeCommand('ank.open', uri);
+    assert.equal((await settled(markdownPreviews)).length, 1, 'ank.open previews');
+    assert.equal(panels().length, 0, 'ank.open opens no panel');
   });
 
   test('the panel button opens the file, and that one is an editor', async () => {

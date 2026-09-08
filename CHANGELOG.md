@@ -8,6 +8,15 @@ All notable changes to this extension are recorded here. The format follows
 
 ### Changed
 
+- **A reading opens the preview, wherever the reading started.** Choosing an
+  entity in Find or in What Binds This File opened the detail panel, while
+  clicking the same entity in a tree opened its preview. Both are somebody
+  asking to read one entity, so both now open the same thing. A verb that
+  changed something still leaves you in the panel, which is where the claim it
+  took and the buttons for what comes next are.
+- **Every command can be pointed at an `ank:` uri**, not just `ank.open`. What
+  a command was pointed at is decided in one place now, for a tree row, a
+  context menu, the panel and a uri alike.
 - **Choosing a log entry opens it.** Every entry in a work trace is a `LOG-*`
   entity, and the picker over them offered rows that stood for nothing: the
   chosen one was read and dropped. A row now carries its id and choosing it

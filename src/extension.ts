@@ -3,19 +3,14 @@ import * as vscode from 'vscode';
 import { AnkCli, AnkError, Capabilities, INSTALL_HINT, locate } from './ank';
 import type { Located } from './ank';
 import { registerCommands } from './commands';
+import { pointedAt } from './commands/pick';
 import { CorpusRegistry } from './corpus/registry';
 import { registerTools } from './lm/tools';
 import { Log } from './log';
 import { AnkMcpProvider, declare, MCP_PROVIDER_ID } from './mcp/provider';
-import {
-  ANK_SCHEME,
-  EntityDocumentProvider,
-  entityOf,
-  entityUri,
-} from './providers/entityDocument';
+import { ANK_SCHEME, EntityDocumentProvider, entityUri } from './providers/entityDocument';
 import { Findings } from './providers/diagnostics';
 import { EntityPanel } from './providers/entityPanel';
-import { refIn } from './ui/addressing';
 import { BindsView } from './ui/bindsView';
 import { DecisionsView } from './ui/decisionsView';
 import { GraphView } from './ui/graphView';
@@ -128,6 +123,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         log as Log,
       );
     },
+    preview: async (corpus, id) => {
+      await openPreview({ corpus, id, kind: 'task', title: id }, registry, documents);
+    },
     onFindings: (corpus, checked) => findings.report(corpus, checked),
   });
 
@@ -195,7 +193,7 @@ async function openPreview(
   registry: CorpusRegistry,
   documents: EntityDocumentProvider,
 ): Promise<void> {
-  const ref = addressed(given, registry);
+  const ref = pointedAt(given, registry);
   if (!ref) {
     return;
   }
@@ -224,7 +222,7 @@ async function openEntity(
   panel: EntityPanel,
   log: Log,
 ): Promise<void> {
-  const ref = addressed(given, registry);
+  const ref = pointedAt(given, registry);
   if (!ref) {
     return;
   }
@@ -251,7 +249,7 @@ async function openFile(
   documents: EntityDocumentProvider,
   log: Log,
 ): Promise<void> {
-  const ref = addressed(given, registry);
+  const ref = pointedAt(given, registry);
   if (!ref) {
     return;
   }
@@ -267,30 +265,6 @@ async function openFile(
   const document = await vscode.workspace.openTextDocument(uri);
   await vscode.languages.setTextDocumentLanguage(document, 'markdown');
   await vscode.window.showTextDocument(document, { preview: true });
-}
-
-/**
- * What a command was pointed at.
- *
- * A tree row, its context menu and the detail panel each hand over a different
- * shape, and `refIn` knows which is which. An `ank:` uri is the case it does
- * not cover, and it is handled here: it is what a link in a rendered entity
- * carries and what a test can invoke with, and the scheme already names a
- * corpus and an id, so there is nothing to look up beyond which open corpus it
- * belongs to.
- */
-function addressed(
-  given: EntityRef | vscode.Uri | undefined,
-  registry: CorpusRegistry,
-): EntityRef | undefined {
-  if (given instanceof vscode.Uri) {
-    const found = entityOf(given, registry);
-    return found
-      ? { corpus: found.corpus, id: found.id, kind: 'task', title: found.id }
-      : undefined;
-  }
-
-  return refIn(given);
 }
 
 /** A refusal is a fact about the corpus, and it names what to run next. */

@@ -31,8 +31,21 @@ export interface CommandContext {
   log: Log;
   /** The adapter, for the one verb that addresses no corpus yet. */
   cli: AnkCli;
-  /** Reopens an entity after a verb changed it. */
+  /**
+   * Reopens an entity in the detail panel after a verb changed it.
+   *
+   * The panel is where a write leaves the reader: it carries the claim the
+   * verb just took or released, and the buttons for what comes next.
+   */
   reveal: (corpus: Corpus, id: string) => Promise<void>;
+  /**
+   * Opens an entity as the rendered document, which is what a reading is.
+   *
+   * A chosen search result, a chosen log entry and a clicked tree row are the
+   * same gesture -- somebody asked to read this one -- and they open the same
+   * thing.
+   */
+  preview: (corpus: Corpus, id: string) => Promise<void>;
   /** Hands findings to whatever renders them. */
   onFindings: (corpus: Corpus, document: CheckDocument) => void;
 }

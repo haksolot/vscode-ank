@@ -203,12 +203,7 @@ export function registerLoop(register: Register, shared: CommandContext): void {
       return;
     }
 
-    await vscode.commands.executeCommand('ank.open', {
-      corpus: ref.corpus,
-      id: opening,
-      kind: 'log',
-      title: opening,
-    });
+    await shared.preview(ref.corpus, opening);
   });
 
   register('ank.done', 'done', async (given: unknown) => {

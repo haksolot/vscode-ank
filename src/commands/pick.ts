@@ -13,6 +13,7 @@ import * as vscode from 'vscode';
 import type { FindResult } from '../ank';
 import type { Corpus } from '../corpus/corpus';
 import type { CorpusRegistry } from '../corpus/registry';
+import { entityOf } from '../providers/entityDocument';
 import { refIn } from '../ui/addressing';
 import { addressingOf, roleOfStatus } from '../ui/meaning';
 import { ICON } from '../ui/meaning';
@@ -115,19 +116,40 @@ function detailOf(entity: FindResult): string {
 }
 
 /**
+ * The entity a command was pointed at, whatever pointed it.
+ *
+ * A tree row, its context menu and the panel each hand over a different shape,
+ * and `refIn` knows those. An `ank:` uri is the fourth: it is what a link in a
+ * rendered entity carries and what a test can invoke with, and resolving it
+ * needs the registry -- the scheme names a corpus and an id, so there is
+ * nothing to look up beyond which open corpus it belongs to.
+ *
+ * The kind is a guess for a uri, because the scheme does not carry one. No
+ * command reads it for anything but a label.
+ */
+export function pointedAt(given: unknown, registry: CorpusRegistry): EntityRef | undefined {
+  if (given instanceof vscode.Uri) {
+    const found = entityOf(given, registry);
+    return found
+      ? { corpus: found.corpus, id: found.id, kind: 'task', title: found.id }
+      : undefined;
+  }
+
+  return refIn(given);
+}
+
+/**
  * The entity a command should act on.
  *
- * A command invoked from a tree row, from its context menu or from the panel
- * arrives pointed at one; `refIn` reads the address out of whichever of those
- * shapes turned up. From the palette it arrives with nothing, and only then is
- * the user asked.
+ * Pointed at one, it acts on it. From the palette it arrives pointed at
+ * nothing, and only then is the user asked.
  */
 export async function refOf(
   given: unknown,
   registry: CorpusRegistry,
   options: Parameters<typeof pickEntity>[1],
 ): Promise<EntityRef | undefined> {
-  const pointed = refIn(given);
+  const pointed = pointedAt(given, registry);
   if (pointed) {
     return pointed;
   }
