@@ -104,7 +104,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       documents.invalidateAll();
     }),
     vscode.commands.registerCommand('ank.open', (given: EntityRef | vscode.Uri) =>
-      openEntity(given, registry, documents, panel, log as Log),
+      openPreview(given, registry, documents),
     ),
     vscode.commands.registerCommand('ank.openFile', (given: EntityRef | vscode.Uri) =>
       openFile(given, registry, documents, log as Log),
@@ -174,15 +174,47 @@ export function deactivate(): void {
 }
 
 /**
- * Opens an entity: the panel, and no editor beside it.
+ * Opens an entity as the rendered document, and never as its source.
  *
- * The panel is the whole entity -- the file's own body, and the things the
- * file cannot carry: who holds it, what it waits on, what it unblocks, its log
- * split from the machinery. The raw frontmatter is the occasional thing rather
- * than the default one, and the panel carries a button for it.
+ * A row in a tree is a reader asking to read. The `.md` suffix on the `ank:`
+ * uri is what makes the built-in preview willing to render it, which is the
+ * markdown preview ADR-6b71ec0890de says a virtual scheme buys for no code --
+ * this is the line that cashes it in. The frontmatter is the price: the
+ * preview renders it as a rule rather than hiding it, and a reader who wants
+ * the bytes has `ank.openFile` on the row and in the panel.
  *
- * Focus is left where it was, so arrowing down a tree repaints the panel
- * instead of stealing the keyboard on every row.
+ * The cache is dropped rather than read, so the preview pulls a fresh `show`
+ * through the provider: clicking a row is an explicit read, and the corpus may
+ * have moved since the last one. Nothing is reported from here -- a refusal
+ * comes back as the document body, which is a tab that stays open with the
+ * reason in it rather than a notification that disappears.
+ */
+async function openPreview(
+  given: EntityRef | vscode.Uri | undefined,
+  registry: CorpusRegistry,
+  documents: EntityDocumentProvider,
+): Promise<void> {
+  const ref = addressed(given, registry);
+  if (!ref) {
+    return;
+  }
+
+  const uri = entityUri(ref.corpus.folder.uri, ref.id);
+  documents.invalidate(uri);
+  await vscode.commands.executeCommand('markdown.showPreview', uri);
+}
+
+/**
+ * Opens an entity in the detail panel: what the file cannot say.
+ *
+
+ * Who holds it, what it waits on, what it unblocks, its log split from the
+ * machinery -- and the buttons that act on it. This is where a verb leaves the
+ * reader once it has changed something, which is why `reveal` comes here and a
+ * click does not.
+ *
+ * Focus is left where it was, so a verb that finishes does not take the
+ * keyboard away from wherever it was started.
  */
 async function openEntity(
   given: EntityRef | vscode.Uri | undefined,

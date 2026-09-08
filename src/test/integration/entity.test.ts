@@ -44,6 +44,40 @@ function ank<T>(args: readonly string[]): T {
   return JSON.parse(stdout) as T;
 }
 
+/** The markdown previews open right now, whatever they are pointed at. */
+function markdownPreviews(): readonly vscode.Tab[] {
+  return vscode.window.tabGroups.all
+    .flatMap((group) => group.tabs)
+    .filter(
+      (tab) =>
+        tab.input instanceof vscode.TabInputWebview &&
+        tab.input.viewType.includes('markdown.preview'),
+    );
+}
+
+/**
+ * Waits for a tab to appear, because opening one is not done when the command
+ * that opened it resolves.
+ *
+ * `markdown.showPreview` returns as soon as the preview is asked for. The tab
+ * model catches up a moment later, and on the first call of a session it waits
+ * on the built-in markdown extension activating too. Polling a short while is
+ * what separates "nothing opened" from "not yet".
+ */
+async function settled(
+  what: () => readonly vscode.Tab[],
+  within = 10_000,
+): Promise<readonly vscode.Tab[]> {
+  const deadline = Date.now() + within;
+  for (;;) {
+    const found = what();
+    if (found.length > 0 || Date.now() > deadline) {
+      return found;
+    }
+    await new Promise((resume) => setTimeout(resume, 100));
+  }
+}
+
 const quiet = { info: () => {}, warn: () => {}, error: () => {} };
 
 suite('the entity document', () => {
@@ -69,19 +103,30 @@ suite('the entity document', () => {
     assert.equal(document.getText(), shown.content);
   });
 
-  test('opening an entity opens the panel and no editor beside it', async () => {
+  test('opening an entity renders it, and shows nobody its source', async () => {
     await vscode.commands.executeCommand('workbench.action.closeAllEditors');
 
     const found = ank<{ results: { id: string }[] }>(['find', '--type', 'task']);
     const first = found.results[0];
     assert.ok(first);
 
-    const before = vscode.window.visibleTextEditors.length;
-    await vscode.commands.executeCommand('ank.open', entityUri(folder().uri, first.id));
+    const uri = entityUri(folder().uri, first.id);
+    await vscode.commands.executeCommand('ank.open', uri);
 
-    // Two tabs for one click is what this test exists to prevent. The panel is
-    // a webview and not a text editor, so the count must not move.
-    assert.equal(vscode.window.visibleTextEditors.length, before);
+    // The source in a tab is what this test exists to prevent. A rendered
+    // preview is a webview, so no text editor may hold the entity -- and no
+    // text editor may hold anything else either, since one click opened one
+    // thing.
+    assert.deepEqual(
+      vscode.window.visibleTextEditors.map((editor) => editor.document.uri.toString()),
+      [],
+    );
+
+    // What did open is the built-in markdown preview, pointed at the entity.
+    // The tab is asked rather than the editor, because a webview is not one.
+    const previews = await settled(markdownPreviews);
+    assert.equal(previews.length, 1, 'exactly one markdown preview');
+    assert.match(previews[0]?.label ?? '', new RegExp(first.id));
   });
 
   test('the panel button opens the file, and that one is an editor', async () => {

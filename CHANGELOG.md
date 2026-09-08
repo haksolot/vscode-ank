@@ -6,6 +6,15 @@ All notable changes to this extension are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **A tree row opens the rendered preview**, not the entity's source. Clicking
+  a task, a decision or a specification runs the built-in markdown preview
+  against the `ank:` uri — the preview ADR-6b71ec0890de says a virtual scheme
+  buys for no code. The source is still one click away, on the row's inline
+  action and on the panel's button, and the detail panel is where a verb leaves
+  you once it has changed something.
+
 ## [0.1.0] — 2026-09-03
 
 First release. Written against ank 0.7.0 and document contract 1.
