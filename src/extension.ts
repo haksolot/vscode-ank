@@ -3,16 +3,12 @@ import * as vscode from 'vscode';
 import { AnkCli, AnkError, Capabilities, INSTALL_HINT, locate } from './ank';
 import type { Located } from './ank';
 import { registerCommands } from './commands';
+import { pointedAt } from './commands/pick';
 import { CorpusRegistry } from './corpus/registry';
 import { registerTools } from './lm/tools';
 import { Log } from './log';
 import { AnkMcpProvider, declare, MCP_PROVIDER_ID } from './mcp/provider';
-import {
-  ANK_SCHEME,
-  EntityDocumentProvider,
-  entityOf,
-  entityUri,
-} from './providers/entityDocument';
+import { ANK_SCHEME, EntityDocumentProvider, entityUri } from './providers/entityDocument';
 import { Findings } from './providers/diagnostics';
 import { EntityPanel } from './providers/entityPanel';
 import { BindsView } from './ui/bindsView';
@@ -104,7 +100,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       documents.invalidateAll();
     }),
     vscode.commands.registerCommand('ank.open', (given: EntityRef | vscode.Uri) =>
-      openEntity(given, registry, documents, panel, log as Log),
+      openPreview(given, registry, documents),
     ),
     vscode.commands.registerCommand('ank.openFile', (given: EntityRef | vscode.Uri) =>
       openFile(given, registry, documents, log as Log),
@@ -126,6 +122,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         panel,
         log as Log,
       );
+    },
+    preview: async (corpus, id) => {
+      await openPreview({ corpus, id, kind: 'task', title: id }, registry, documents);
     },
     onFindings: (corpus, checked) => findings.report(corpus, checked),
   });
@@ -174,15 +173,47 @@ export function deactivate(): void {
 }
 
 /**
- * Opens an entity: the panel, and no editor beside it.
+ * Opens an entity as the rendered document, and never as its source.
  *
- * The panel is the whole entity -- the file's own body, and the things the
- * file cannot carry: who holds it, what it waits on, what it unblocks, its log
- * split from the machinery. The raw frontmatter is the occasional thing rather
- * than the default one, and the panel carries a button for it.
+ * A row in a tree is a reader asking to read. The `.md` suffix on the `ank:`
+ * uri is what makes the built-in preview willing to render it, which is the
+ * markdown preview ADR-6b71ec0890de says a virtual scheme buys for no code --
+ * this is the line that cashes it in. The frontmatter is the price: the
+ * preview renders it as a rule rather than hiding it, and a reader who wants
+ * the bytes has `ank.openFile` on the row and in the panel.
  *
- * Focus is left where it was, so arrowing down a tree repaints the panel
- * instead of stealing the keyboard on every row.
+ * The cache is dropped rather than read, so the preview pulls a fresh `show`
+ * through the provider: clicking a row is an explicit read, and the corpus may
+ * have moved since the last one. Nothing is reported from here -- a refusal
+ * comes back as the document body, which is a tab that stays open with the
+ * reason in it rather than a notification that disappears.
+ */
+async function openPreview(
+  given: EntityRef | vscode.Uri | undefined,
+  registry: CorpusRegistry,
+  documents: EntityDocumentProvider,
+): Promise<void> {
+  const ref = pointedAt(given, registry);
+  if (!ref) {
+    return;
+  }
+
+  const uri = entityUri(ref.corpus.folder.uri, ref.id);
+  documents.invalidate(uri);
+  await vscode.commands.executeCommand('markdown.showPreview', uri);
+}
+
+/**
+ * Opens an entity in the detail panel: what the file cannot say.
+ *
+
+ * Who holds it, what it waits on, what it unblocks, its log split from the
+ * machinery -- and the buttons that act on it. This is where a verb leaves the
+ * reader once it has changed something, which is why `reveal` comes here and a
+ * click does not.
+ *
+ * Focus is left where it was, so a verb that finishes does not take the
+ * keyboard away from wherever it was started.
  */
 async function openEntity(
   given: EntityRef | vscode.Uri | undefined,
@@ -191,7 +222,7 @@ async function openEntity(
   panel: EntityPanel,
   log: Log,
 ): Promise<void> {
-  const ref = addressed(given, registry);
+  const ref = pointedAt(given, registry);
   if (!ref) {
     return;
   }
@@ -218,7 +249,7 @@ async function openFile(
   documents: EntityDocumentProvider,
   log: Log,
 ): Promise<void> {
-  const ref = addressed(given, registry);
+  const ref = pointedAt(given, registry);
   if (!ref) {
     return;
   }
@@ -234,32 +265,6 @@ async function openFile(
   const document = await vscode.workspace.openTextDocument(uri);
   await vscode.languages.setTextDocumentLanguage(document, 'markdown');
   await vscode.window.showTextDocument(document, { preview: true });
-}
-
-/**
- * What a command was pointed at.
- *
- * A tree row and the detail panel both hand over an `EntityRef`. An `ank:` uri
- * is accepted too, which is what a link in a rendered entity carries and what
- * a test can invoke with -- the scheme already names a corpus and an id, so
- * there is nothing to look up beyond which open corpus it belongs to.
- */
-function addressed(
-  given: EntityRef | vscode.Uri | undefined,
-  registry: CorpusRegistry,
-): EntityRef | undefined {
-  if (!given) {
-    return undefined;
-  }
-
-  if (given instanceof vscode.Uri) {
-    const found = entityOf(given, registry);
-    return found
-      ? { corpus: found.corpus, id: found.id, kind: 'task', title: found.id }
-      : undefined;
-  }
-
-  return given;
 }
 
 /** A refusal is a fact about the corpus, and it names what to run next. */

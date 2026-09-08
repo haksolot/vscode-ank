@@ -60,7 +60,7 @@ export function registerLook(register: Register, shared: CommandContext): void {
     );
 
     if (chosen) {
-      await shared.reveal(corpus, chosen.row.id);
+      await shared.preview(corpus, chosen.row.id);
     }
   });
 
@@ -107,7 +107,7 @@ export function registerLook(register: Register, shared: CommandContext): void {
     });
 
     if (chosen?.id !== undefined) {
-      await shared.reveal(corpus, chosen.id);
+      await shared.preview(corpus, chosen.id);
     }
   });
 
