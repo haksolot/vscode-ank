@@ -15,6 +15,7 @@ import {
 } from './providers/entityDocument';
 import { Findings } from './providers/diagnostics';
 import { EntityPanel } from './providers/entityPanel';
+import { refIn } from './ui/addressing';
 import { BindsView } from './ui/bindsView';
 import { DecisionsView } from './ui/decisionsView';
 import { GraphView } from './ui/graphView';
@@ -271,19 +272,17 @@ async function openFile(
 /**
  * What a command was pointed at.
  *
- * A tree row and the detail panel both hand over an `EntityRef`. An `ank:` uri
- * is accepted too, which is what a link in a rendered entity carries and what
- * a test can invoke with -- the scheme already names a corpus and an id, so
- * there is nothing to look up beyond which open corpus it belongs to.
+ * A tree row, its context menu and the detail panel each hand over a different
+ * shape, and `refIn` knows which is which. An `ank:` uri is the case it does
+ * not cover, and it is handled here: it is what a link in a rendered entity
+ * carries and what a test can invoke with, and the scheme already names a
+ * corpus and an id, so there is nothing to look up beyond which open corpus it
+ * belongs to.
  */
 function addressed(
   given: EntityRef | vscode.Uri | undefined,
   registry: CorpusRegistry,
 ): EntityRef | undefined {
-  if (!given) {
-    return undefined;
-  }
-
   if (given instanceof vscode.Uri) {
     const found = entityOf(given, registry);
     return found
@@ -291,7 +290,7 @@ function addressed(
       : undefined;
   }
 
-  return given;
+  return refIn(given);
 }
 
 /** A refusal is a fact about the corpus, and it names what to run next. */

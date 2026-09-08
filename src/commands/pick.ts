@@ -13,6 +13,7 @@ import * as vscode from 'vscode';
 import type { FindResult } from '../ank';
 import type { Corpus } from '../corpus/corpus';
 import type { CorpusRegistry } from '../corpus/registry';
+import { refIn } from '../ui/addressing';
 import { addressingOf, roleOfStatus } from '../ui/meaning';
 import { ICON } from '../ui/meaning';
 import type { EntityRef } from '../ui/tree';
@@ -116,25 +117,20 @@ function detailOf(entity: FindResult): string {
 /**
  * The entity a command should act on.
  *
- * A command invoked from a tree node or from the panel arrives with one
- * already. From the palette it arrives with nothing, and the user is asked.
+ * A command invoked from a tree row, from its context menu or from the panel
+ * arrives pointed at one; `refIn` reads the address out of whichever of those
+ * shapes turned up. From the palette it arrives with nothing, and only then is
+ * the user asked.
  */
 export async function refOf(
   given: unknown,
   registry: CorpusRegistry,
   options: Parameters<typeof pickEntity>[1],
 ): Promise<EntityRef | undefined> {
-  if (isRef(given)) {
-    return given;
+  const pointed = refIn(given);
+  if (pointed) {
+    return pointed;
   }
   const corpus = await pickCorpus(registry);
   return corpus ? pickEntity(corpus, options) : undefined;
-}
-
-function isRef(value: unknown): value is EntityRef {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-  const candidate = value as Partial<EntityRef>;
-  return typeof candidate.id === 'string' && candidate.corpus !== undefined;
 }

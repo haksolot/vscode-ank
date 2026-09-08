@@ -8,6 +8,11 @@ All notable changes to this extension are recorded here. The format follows
 
 ### Changed
 
+- **A context menu acts on the row it was opened on.** Right-clicking a task
+  and choosing Read Log, Claim, Log, Done, Release, Close, Amend or Attest ran
+  the picker and asked which entity, which the click had already said. A menu
+  hands over the node and not the ref hanging off it, and the shape check
+  stopped one field short.
 - **A tree row opens the rendered preview**, not the entity's source. Clicking
   a task, a decision or a specification runs the built-in markdown preview
   against the `ank:` uri — the preview ADR-6b71ec0890de says a virtual scheme
