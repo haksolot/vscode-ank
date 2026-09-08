@@ -8,6 +8,12 @@ All notable changes to this extension are recorded here. The format follows
 
 ### Changed
 
+- **Choosing a log entry opens it.** Every entry in a work trace is a `LOG-*`
+  entity, and the picker over them offered rows that stood for nothing: the
+  chosen one was read and dropped. A row now carries its id and choosing it
+  opens the entry's preview. An entry migrated from a previous layout has no
+  entity of its own, so its row reads and does not move rather than opening a
+  neighbour's.
 - **A context menu acts on the row it was opened on.** Right-clicking a task
   and choosing Read Log, Claim, Log, Done, Release, Close, Amend or Attest ran
   the picker and asked which entity, which the click had already said. A menu

@@ -10,7 +10,8 @@ import * as vscode from 'vscode';
 
 import type { Proof } from '../ank';
 import type { CommandContext, Register } from './index';
-import { ask, attempt, confirm } from './run';
+import { isHeading, traceRows } from '../ui/trace';
+import { ask, attempt, confirm, row } from './run';
 import { pickCorpus, refOf } from './pick';
 
 const PROOF_TYPES = ['commit', 'human-review', 'assertion', 'test'] as const;
@@ -173,31 +174,40 @@ export function registerLoop(register: Register, shared: CommandContext): void {
       return;
     }
 
-    const rows: vscode.QuickPickItem[] = read.entries.map((entry) => ({
-      label: entry.message,
-      description: entry.who,
-      detail: entry.timestamp,
-    }));
-
-    if (read.machinery.length > 0) {
-      rows.push({ label: 'Machinery', kind: vscode.QuickPickItemKind.Separator });
-      for (const entry of read.machinery) {
-        rows.push({
-          label: entry.message,
-          description: `${entry.who} · records ${entry.records ?? ''}`,
-          detail: entry.timestamp,
-        });
-      }
-    }
-
-    if (rows.length === 0) {
+    const trace = traceRows(read);
+    if (trace.length === 0) {
       void vscode.window.showInformationMessage(`${ref.id} has no log yet.`);
       return;
     }
 
-    await vscode.window.showQuickPick(rows, {
+    // Every entry is a `LOG-*` entity, and a picker over them is a reader
+    // asking to read: the row carries its id so choosing one can open it.
+    // `id` is optional on the way out because `row` drops what is null, and
+    // because a heading stands for no entity at all.
+    const rows: (vscode.QuickPickItem & { id?: string | null | undefined })[] = trace.map(
+      (entry) =>
+        isHeading(entry)
+          ? row({ label: entry.heading, kind: vscode.QuickPickItemKind.Separator })
+          : row(entry),
+    );
+
+    const chosen = await vscode.window.showQuickPick(rows, {
       title: `Log · ${ref.id}`,
       placeHolder: `${String(read.total)} entr(ies) in the work trace`,
+    });
+
+    // A migrated entry is not an entity, so there is nothing to open and
+    // nothing to say about it: the picker read, which is what it was for.
+    const opening = chosen?.id;
+    if (opening === undefined || opening === null) {
+      return;
+    }
+
+    await vscode.commands.executeCommand('ank.open', {
+      corpus: ref.corpus,
+      id: opening,
+      kind: 'log',
+      title: opening,
     });
   });
 
