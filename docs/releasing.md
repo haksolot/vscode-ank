@@ -93,7 +93,11 @@ the tenant and outlives all of that.
    organisation, so it is not a step to take by reflex.
 5. **Find out what the Marketplace will call it.** Run the **Marketplace
    identity** workflow by hand, passing the client and tenant ids as its two
-   inputs. It signs in as the identity and asks `app.vssps.visualstudio.com`
+   inputs. It also finishes by asking the Marketplace whether the identity may
+   publish — `vsce verify-pat --azure-credential`, which writes nothing — so
+   re-running it after step 6 is how you learn the wiring holds without
+   cutting a release to find out. On the first run that check is expected to
+   fail: the id it prints has not been authorised yet. It signs in as the identity and asks `app.vssps.visualstudio.com`
    who that is; the `id` in the answer is the identity's Visual Studio profile
    id, and it is the only handle the Marketplace accepts. That id is readable
    only by the identity itself, which is why the asking happens in a workflow
@@ -102,7 +106,8 @@ the tenant and outlives all of that.
 6. **Authorise it.** <https://marketplace.visualstudio.com/manage/publishers/haksolot>
    → **Members** → **Add**, which is a bare *User Id* field: paste the profile
    id there and give it the **Contributor** role.
-7. **Throw the switch, last.** **Settings → Secrets and variables → Actions →
+7. **Throw the switch, last.** — *done for this repository on
+   2026-09-12; `AZURE_CLIENT_ID` is set and releases take the Entra route.* **Settings → Secrets and variables → Actions →
    Variables**: `AZURE_CLIENT_ID` and `AZURE_TENANT_ID`. Variables rather than
    secrets, because neither value is one. Last, because `AZURE_CLIENT_ID` is
    what moves the release off the PAT: set it before step 5 and a release
@@ -113,6 +118,10 @@ the tenant and outlives all of that.
 Nothing in this route expires, there is no token to rotate, and the repository
 holds no secret for it: each run mints a token from GitHub's own OIDC assertion
 and it dies with the job.
+
+`VSCE_PAT` is kept until a release has actually gone out this way, because
+clearing `AZURE_CLIENT_ID` is then still a working fallback. After that it is
+dead weight with an expiry date, and worth deleting.
 
 #### A personal access token, until December 1 2026
 
