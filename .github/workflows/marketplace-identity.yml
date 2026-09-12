@@ -1,0 +1,52 @@
+name: Marketplace identity
+
+# The Marketplace knows an Entra identity by its Visual Studio profile id, not
+# by its client id, and that id is readable only by the identity itself. The
+# alternative to asking from here is a client secret on somebody's laptop,
+# which is the thing the whole migration exists to remove -- so the identity
+# asks from the one place federation already answers for it.
+#
+# Run it by hand, read the `id` out of the answer, and give that to the
+# publisher's Members tab with the Contributor role. See docs/releasing.md.
+#
+# The client and tenant ids are inputs, and only fall back to the repository
+# variables. That is deliberate: `AZURE_CLIENT_ID` is also what switches the
+# release onto the Entra route, and it cannot be set until the identity is a
+# member of the publisher -- which cannot happen until this workflow has been
+# run. Taking them as inputs is what unties that knot, so the variables are
+# set once, last, as the cutover and nothing else.
+on:
+  workflow_dispatch:
+    inputs:
+      client_id:
+        description: Application (client) ID of the identity. Defaults to the AZURE_CLIENT_ID variable.
+        required: false
+      tenant_id:
+        description: Directory (tenant) ID. Defaults to the AZURE_TENANT_ID variable.
+        required: false
+
+permissions:
+  id-token: write
+
+jobs:
+  whoami:
+    runs-on: ubuntu-latest
+    # The environment the federated credential names, for the same reason the
+    # release job is in it: a subject has to hold still, and a tag does not.
+    environment: release
+    steps:
+      - name: Sign in to Entra ID
+        uses: azure/login@v2
+        with:
+          client-id: ${{ inputs.client_id || vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ inputs.tenant_id || vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      # 499b84ac-1321-427f-aa17-267ca6975798 is Azure DevOps, the resource the
+      # Marketplace authenticates against and the same one `vsce` asks for a
+      # token on.
+      - name: Ask who the identity is
+        run: |
+          az rest \
+            --url https://app.vssps.visualstudio.com/_apis/profile/profiles/me \
+            --resource 499b84ac-1321-427f-aa17-267ca6975798

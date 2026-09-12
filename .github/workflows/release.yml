@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 # One `.vsix` is built once and then goes three places: the GitHub release, the
 # VS Code Marketplace and Open VSX. Publishing that exact file rather than
@@ -15,6 +16,13 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # Federation identifies a workflow by a subject, and a tag cannot be one:
+    # the subject would name the tag, and every release invents a new tag. An
+    # environment is a name that holds still, so the federated credential is
+    # written against `repo:<owner>/<repo>:environment:release` and this is
+    # what puts the job inside it. Give it no reviewers, or a release waits for
+    # a human who was not told to expect it.
+    environment: release
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -73,11 +81,38 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+      # There are two routes to the Marketplace and the repository variable
+      # `AZURE_CLIENT_ID` is the switch: Entra where it is set, the PAT while
+      # it is not. The PAT route has an end date -- global PATs are retired on
+      # December 1 2026, and *All accessible organizations* is the only scope
+      # the Marketplace accepts, so every Marketplace PAT is a global one.
+      # Setting the variable is the cutover; see docs/releasing.md.
+      - name: Sign in to Entra ID
+        if: ${{ vars.AZURE_CLIENT_ID != '' && startsWith(github.ref, 'refs/tags/v') }}
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          # Reaching the Marketplace needs no role on any subscription, and an
+          # app registration outlives whichever subscription happened to be
+          # open when it was made. Without this, an identity that can see no
+          # subscription fails to sign in at all.
+          allow-no-subscriptions: true
+
+      # `vsce --azure-credential` asks a ChainedTokenCredential for a token on
+      # the Azure DevOps resource. EnvironmentCredential is tried first and
+      # reads no federated token file, so it abstains; AzureCliCredential is
+      # next, and that is the one the sign-in above leaves ready. Nothing here
+      # holds a secret: the token is minted per run and dies with it.
+      - name: Publish to the VS Code Marketplace with Entra ID
+        if: ${{ vars.AZURE_CLIENT_ID != '' && startsWith(github.ref, 'refs/tags/v') }}
+        run: npx vsce publish --azure-credential --packagePath ./*.vsix
+
       # `vsce` reads VSCE_PAT from the environment. An absent secret arrives as
       # an empty string and produces an authentication error several steps
       # later, so it is named here instead.
-      - name: Publish to the VS Code Marketplace
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publish to the VS Code Marketplace with a PAT
+        if: ${{ vars.AZURE_CLIENT_ID == '' && startsWith(github.ref, 'refs/tags/v') }}
         run: |
           if [ -z "${VSCE_PAT}" ]; then
             echo "VSCE_PAT is not set: see docs/releasing.md" >&2
