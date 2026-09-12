@@ -29,13 +29,30 @@ suite before it packages anything.
 ### VS Code Marketplace
 
 The Marketplace identifies a publisher through Azure DevOps, so it needs a
-Microsoft account and an Azure DevOps organisation before it needs anything
-about the extension.
+Microsoft account before it needs anything about the extension. The publisher
+and the token come from two different places, and only the token wants an
+organisation.
 
-1. Create an Azure DevOps organisation at <https://dev.azure.com>.
-2. Create the publisher `haksolot` at
+1. Create the publisher `haksolot` at
    <https://marketplace.visualstudio.com/manage>. The id must match
-   `publisher` in `package.json`.
+   `publisher` in `package.json`. This asks for the Microsoft account and
+   nothing else.
+2. Create an Azure DevOps organisation at <https://dev.azure.com>. This is the
+   step that bites: an organisation now has to be linked to an Azure
+   subscription you hold Owner or Contributor on, and with no subscription the
+   picker comes up empty and the signup dead-ends. Until an organisation
+   exists, <https://dev.azure.com/_usersSettings/tokens> answers 404 — the
+   tokens page is scoped to an organisation, which is why there is no minting
+   a token without one.
+
+   The organisation is free and stays free. The free tier is five Basic users,
+   one hosted CI/CD job and unlimited private repos, and we use none of it:
+   the organisation exists so that the token page exists.
+
+   Benefit-based subscriptions count — Visual Studio, student, trial,
+   sponsorship — and *Azure for Students* asks for an institutional address
+   rather than a card, which is the only card-free route. Otherwise an Azure
+   free account wants a phone number and a card for identity verification.
 3. Mint a personal access token: the avatar menu in Azure DevOps → **Personal
    access tokens** → **New Token**. Set **Organization** to *All accessible
    organizations* — a token scoped to one organisation is rejected by the
@@ -45,6 +62,12 @@ about the extension.
 The maximum lifetime is one year, so this is a recurring errand. A publish that
 fails on an expired token costs a re-run, not a rebuild: the GitHub release is
 created before either registry is touched.
+
+There is a way round all of it, worth knowing for the day the token has expired
+and the release matters: the publisher page takes a `.vsix` by hand, under
+**⋯ → New extension → Visual Studio Code**. It wants no token and no
+organisation. It also leaves the workflow's Marketplace step with nothing to
+do, so a release published that way is a release the pipeline did not make.
 
 ### Open VSX
 
