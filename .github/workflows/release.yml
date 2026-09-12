@@ -58,9 +58,18 @@ jobs:
 
       # The release is created before either registry is touched. A token that
       # has expired then costs a re-run of a publish step, not the build.
+      # Idempotent, because the whole point of creating the release first is
+      # that a failed publish costs a re-run -- and a re-run replays this step.
+      # `gh release create` on a release that exists is an error, which would
+      # kill the job here and never reach the registries it was re-run for.
       - name: Attach it to the release
         if: startsWith(github.ref, 'refs/tags/v')
-        run: gh release create "$GITHUB_REF_NAME" --generate-notes ./*.vsix
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" ./*.vsix --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" --generate-notes ./*.vsix
+          fi
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -80,8 +89,12 @@ jobs:
 
       # Open VSX is where Cursor, Windsurf, VSCodium and the Eclipse clients
       # look. The namespace is created once by hand; see docs/releasing.md.
+      # Not `needs`-ordered behind the Marketplace: the two registries are
+      # independent, and one of them timing out is not a reason to leave the
+      # other unpublished. `!cancelled()` runs it after a failed Marketplace
+      # step while still honouring a cancellation.
       - name: Publish to Open VSX
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/v') }}
         run: |
           if [ -z "${OVSX_PAT}" ]; then
             echo "OVSX_PAT is not set: see docs/releasing.md" >&2
