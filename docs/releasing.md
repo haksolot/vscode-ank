@@ -53,16 +53,45 @@ the tenant and outlives all of that.
    (client) ID** and the **Directory (tenant) ID**.
 2. **Let GitHub speak for it.** The registration → **Certificates & secrets**
    → **Federated credentials** → **Add credential** → *GitHub Actions
-   deploying Azure resources*. Organisation `haksolot`, repository
-   `vscode-ank`, entity type **Environment**, name `release`. The subject it
-   writes is `repo:haksolot/vscode-ank:environment:release`, which is why both
-   workflows put their job in that environment: a tag cannot be a subject,
-   because the subject would have to name a tag that does not exist yet.
+   deploying Azure resources*. Entity type **Environment**, name `release`:
+   a tag cannot be a subject, because the subject would have to name a tag
+   that does not exist yet, so both workflows put their job in an environment
+   instead, which is a name that holds still.
+
+   The form asks for the organisation and repository **and their numeric ids**,
+   because the subject is now built from the immutable ids:
+
+   ```
+   repo:haksolot@83018259/vscode-ank@1355647508:environment:release
+   ```
+
+   GitHub emits that form by default for any repository created, renamed or
+   transferred since July 15 2026; older repositories keep the name-only form
+   until they opt in. `gh api repos/<owner>/<repo> --jq '{o:.owner.id,r:.id}'`
+   prints the two numbers. Get this wrong and the sign-in fails with nothing
+   but a mismatch to show for it, so read the subject the runner logs back:
+   `azure/login` prints the claim it presented.
 3. **Make the environment**, if the first run has not already: **Settings →
    Environments → New environment**, named `release`, **with no reviewers**. A
    reviewer here makes every release wait for a human who was not told to
    expect it.
-4. **Find out what the Marketplace will call it.** Run the **Marketplace
+4. **Give it somewhere to exist.** A service principal does not appear in
+   Azure DevOps on its own — Microsoft calls this materialization, and until
+   it happens the identity authenticates fine and then has no profile, which
+   the profile API reports as `VSS011031: There is no profile for the
+   authenticated user in the system`. Add it under **Organization settings →
+   Users → Add users**, by display name, with **Stakeholder** access, which
+   is free and unmetered.
+
+   This is where an organisation created under a personal Microsoft account
+   stops: identities can only be added from the tenant the organisation is
+   connected to, and such an organisation is connected to none. The identity
+   picker then refuses every spelling of the service principal, treating what
+   you type as an email address. Connecting the organisation to the tenant
+   — **Organization settings → Microsoft Entra → Connect directory** — is
+   the prerequisite, and it changes which identity signs in to the
+   organisation, so it is not a step to take by reflex.
+5. **Find out what the Marketplace will call it.** Run the **Marketplace
    identity** workflow by hand, passing the client and tenant ids as its two
    inputs. It signs in as the identity and asks `app.vssps.visualstudio.com`
    who that is; the `id` in the answer is the identity's Visual Studio profile
@@ -70,14 +99,15 @@ the tenant and outlives all of that.
    only by the identity itself, which is why the asking happens in a workflow
    rather than here — the alternative is a client secret on a laptop, which is
    the thing this route exists to remove.
-5. **Authorise it.** <https://marketplace.visualstudio.com/manage/publishers/haksolot>
-   → **Members** → add that id with the **Contributor** role.
-6. **Throw the switch, last.** **Settings → Secrets and variables → Actions →
+6. **Authorise it.** <https://marketplace.visualstudio.com/manage/publishers/haksolot>
+   → **Members** → **Add**, which is a bare *User Id* field: paste the profile
+   id there and give it the **Contributor** role.
+7. **Throw the switch, last.** **Settings → Secrets and variables → Actions →
    Variables**: `AZURE_CLIENT_ID` and `AZURE_TENANT_ID`. Variables rather than
    secrets, because neither value is one. Last, because `AZURE_CLIENT_ID` is
    what moves the release off the PAT: set it before step 5 and a release
    landing in between would authenticate as an identity the publisher has
-   never heard of, with no fallback. That is also why step 4 takes inputs
+   never heard of, with no fallback. That is also why step 5 takes inputs
    instead of reading these.
 
 Nothing in this route expires, there is no token to rotate, and the repository

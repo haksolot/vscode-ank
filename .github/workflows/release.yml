@@ -19,8 +19,10 @@ jobs:
     # Federation identifies a workflow by a subject, and a tag cannot be one:
     # the subject would name the tag, and every release invents a new tag. An
     # environment is a name that holds still, so the federated credential is
-    # written against `repo:<owner>/<repo>:environment:release` and this is
-    # what puts the job inside it. Give it no reviewers, or a release waits for
+    # written against the subject GitHub emits for this environment, which is
+    # built from immutable numeric ids --
+    # `repo:haksolot@83018259/vscode-ank@1355647508:environment:release` --
+    # and this is what puts the job inside it. Give it no reviewers, or a release waits for
     # a human who was not told to expect it.
     environment: release
     steps:
