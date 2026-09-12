@@ -87,6 +87,6 @@ jobs:
             echo "OVSX_PAT is not set: see docs/releasing.md" >&2
             exit 1
           fi
-          npx --yes ovsx@0.10.6 publish ./*.vsix --pat "${OVSX_PAT}"
+          npx --yes ovsx@1.2.0 publish ./*.vsix --pat "${OVSX_PAT}"
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
