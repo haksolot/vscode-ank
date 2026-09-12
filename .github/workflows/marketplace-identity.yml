@@ -44,9 +44,24 @@ jobs:
 
       # 499b84ac-1321-427f-aa17-267ca6975798 is Azure DevOps, the resource the
       # Marketplace authenticates against and the same one `vsce` asks for a
-      # token on.
+      # token on. An identity that has not been added to an Azure DevOps
+      # organisation answers `VSS011031: There is no profile for the
+      # authenticated user in the system` here, which is the tell.
       - name: Ask who the identity is
         run: |
           az rest \
             --url https://app.vssps.visualstudio.com/_apis/profile/profiles/me \
             --resource 499b84ac-1321-427f-aa17-267ca6975798
+
+      # Asks the Marketplace whether this identity may publish as `haksolot`,
+      # and publishes nothing. It is the only way to learn that the wiring
+      # holds without cutting a release to find out, so it runs every time,
+      # after the id it needed has been printed.
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Can it publish?
+        run: npx vsce verify-pat haksolot --azure-credential
